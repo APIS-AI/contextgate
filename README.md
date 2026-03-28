@@ -85,12 +85,16 @@ The separation matters:
 
 - structured prompt-visible state, not freeform prompt stuffing
 - expected data types per field, not best-effort coercion
+- typed arrays, not generic lists of unknown values
+- schema-bound refs for image/audio attachments, not inline media blobs
 - replaceable live state, not endless append-only context
 - explicit trust boundaries, not implicit prose conventions
 - minimal integration surface, not framework lock-in
 - prompt-visible context only, not system-instruction ownership
 
-Type expectations matter because a field that must be an integer, boolean, timestamp, enum, or bounded object is much harder to poison with instruction text than a field that silently accepts arbitrary strings. A timestamp should be validated against a known format such as RFC 3339 or ISO 8601 rather than treated as arbitrary prose.
+Type expectations matter because a field that must be an integer, boolean, timestamp, enum, typed scalar array, or schema-bound media reference is much harder to poison with instruction text than a field that silently accepts arbitrary strings. A timestamp should be validated against a known format such as RFC 3339 or ISO 8601 rather than treated as arbitrary prose.
+
+For `v0`, generic objects and arbitrary nested JSON should stay out of scope. If a developer needs vision or audio context, the protocol should use named attachment refs such as `ImageRefV1` or `AudioRefV1`, not inline payload blobs.
 
 ## Intended Developer Experience
 

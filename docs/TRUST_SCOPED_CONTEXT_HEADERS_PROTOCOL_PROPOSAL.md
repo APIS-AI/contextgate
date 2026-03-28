@@ -293,8 +293,11 @@ Example values:
 - `expected_type=integer`
 - `expected_type=boolean`
 - `expected_type=timestamp`
-- `expected_type=object`
-- `expected_type=array`
+- `expected_type=string[]`
+- `expected_type=integer[]`
+- `expected_type=timestamp[]`
+- `expected_schema=ImageRefV1`
+- `expected_schema=AudioRefV1`
 - `override_mode=replace`
 - `override_mode=merge`
 - `override_mode=deny`
@@ -304,7 +307,38 @@ Example values:
 
 Type expectations are part of the defense model.
 
-If a field is expected to be a number, boolean, timestamp, enum, or bounded object shape, then arbitrary instruction text is much easier to reject before prompt assembly. A timestamp is still text at the transport layer, but it is not freeform text: it should be validated against a known format such as RFC 3339 or ISO 8601 before it is admitted. Type mismatch should default to rejection, downgrade, or local-only quarantine rather than best-effort coercion.
+If a field is expected to be a number, boolean, timestamp, typed scalar array, enum, or schema-bound reference, then arbitrary instruction text is much easier to reject before prompt assembly. A timestamp is still text at the transport layer, but it is not freeform text: it should be validated against a known format such as RFC 3339 or ISO 8601 before it is admitted. Type mismatch should default to rejection, downgrade, or local-only quarantine rather than best-effort coercion.
+
+For `v0`, generic objects and arbitrary nested blobs should be out of scope. Complex values should only be admitted through named, versioned schemas when there is a clear need.
+
+Stub examples for justified complex values:
+
+```json
+{
+  "expected_schema": "ImageRefV1",
+  "value": {
+    "uri": "https://example.invalid/screenshot.png",
+    "mime_type": "image/png",
+    "sha256": "<content hash>",
+    "width": 1440,
+    "height": 900,
+    "alt": "settings panel screenshot"
+  }
+}
+```
+
+```json
+{
+  "expected_schema": "AudioRefV1",
+  "value": {
+    "uri": "https://example.invalid/voice-note.wav",
+    "mime_type": "audio/wav",
+    "sha256": "<content hash>",
+    "duration_ms": 8420,
+    "label": "operator voice note"
+  }
+}
+```
 
 ---
 
