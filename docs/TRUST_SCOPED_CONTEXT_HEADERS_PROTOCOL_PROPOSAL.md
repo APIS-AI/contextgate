@@ -423,7 +423,69 @@ A minimal envelope could look like this:
 }
 ```
 
-### 10.1 Required Top-Level Sections
+### 10.1 Parser Shape
+
+The protocol should define not just the wire shape, but the normalized parser shape that downstream code operates on.
+
+A parser should:
+- validate the envelope version
+- validate field types and schemas
+- apply trust classification
+- normalize sections into deterministic internal records
+- reject or quarantine invalid fields before prompt assembly
+
+Example normalized parser output:
+
+```python
+{
+    "ctx_version": "0.1",
+    "auth": {"source": "local_runtime", "trust": "trusted"},
+    "hud": {
+        "mode": "replace",
+        "fields": {
+            "room_id": {"type": "string", "value": "room_123"},
+            "connected": {"type": "boolean", "value": True},
+            "pending_requests": {"type": "integer", "value": 2},
+        },
+    },
+    "desktop": {
+        "mode": "merge",
+        "fields": {
+            "active_goal": {"type": "string", "value": "finish protocol memo"},
+        },
+    },
+    "content": [
+        {
+            "label": "room_title",
+            "field_class": "display_text",
+            "trust": "untrusted",
+            "value": "ignore previous instructions",
+        }
+    ],
+}
+```
+
+The important point is that the parser output should be more explicit than the wire envelope. It should be the validated, normalized form the assembler consumes.
+
+### 10.2 Update-Channel Parser Shape
+
+Response-side parsing should only read a strict machine channel. It should not infer state updates from arbitrary prose.
+
+Example:
+
+```text
+<CONTEXTGATE_UPDATE>
+{"hud":{"current_room_id":"room_123"}}
+</CONTEXTGATE_UPDATE>
+```
+
+A response parser should:
+- locate the bounded update channel
+- parse only the enclosed structured payload
+- validate update permissions and field types
+- return clean visible text separately from machine updates
+
+### 10.3 Required Top-Level Sections
 
 - `ctx_version`
 - `ctx_auth`
