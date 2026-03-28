@@ -132,8 +132,8 @@ This protocol begins **below** system instructions.
 System instructions and immutable control policy are assumed to be external and authoritative.
 
 A strong prompt-visible hierarchy looks like:
-- `HUD`: live runtime state
-- `DESKTOP`: editable working desktop or local state
+- `HUD`: live operational state about what is true right now
+- `DESKTOP`: editable working state the agent is actively using
 - `CONTENT`: untrusted user / remote / tool text
 - `TRANSCRIPT`: optional historical residue, lowest priority
 
@@ -192,6 +192,8 @@ Those remain a separate project lane.
 
 #### `HUD`
 Replaceable live operational state.
+This is environment state, not scratchpad state.
+It answers: what is true right now?
 Examples:
 - current room id
 - current task id
@@ -203,6 +205,8 @@ Examples:
 
 #### `DESKTOP`
 Editable local working state.
+This is working memory, not environment telemetry.
+It answers: what is the agent actively working with right now?
 Examples:
 - current priorities
 - temporary notes

@@ -23,8 +23,8 @@ At steady state, only one active ContextGate envelope should be present in promp
 ContextGate starts below system instructions.
 
 In scope:
-- `HUD`: replaceable live operational state
-- `DESKTOP`: editable local working state
+- `HUD`: replaceable live operational state about what is true right now
+- `DESKTOP`: editable working state the agent is actively using
 - `CONTENT`: untrusted user, remote, and tool content
 - `TRANSCRIPT`: optional historical residue
 
@@ -48,6 +48,10 @@ The intended steady-state cost is:
 - one current envelope
 - old envelopes removed
 - compact snapshots or deltas when possible
+
+Practical distinction:
+- `HUD` = runtime facts and environment status
+- `DESKTOP` = current notes, priorities, and working state
 
 ## Design Principles
 
