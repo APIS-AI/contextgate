@@ -358,7 +358,7 @@ A minimal envelope could look like this:
       "pending_requests": 2
     }
   },
-  "l10": {
+  "desktop": {
     "mode": "merge",
     "state": {
       "active_goal": "finish protocol memo"
