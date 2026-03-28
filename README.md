@@ -1,0 +1,99 @@
+# ContextGate
+
+ContextGate is a prompt-visible session context layer for agent systems.
+
+It is designed to solve a narrow but increasingly important infrastructure problem: agent stacks routinely flatten trusted state, untrusted external content, tool output, and transcript residue into one prompt-visible blob. That wastes tokens and makes prompt injection easier.
+
+ContextGate introduces a thin, drop-in boundary layer that developers can place in front of an existing prompt assembly pipeline.
+
+## What It Does
+
+- injects a fresh structured context overlay on each turn
+- separates prompt-visible state from transcript residue
+- supports replace-not-append semantics for live HUD state
+- classifies prompt-visible inputs by trust and role
+- keeps untrusted content as content rather than silent authority
+- fits into existing LLM pipelines without requiring a framework rewrite
+
+## Scope
+
+ContextGate starts below system instructions.
+
+In scope:
+- `HUD`: replaceable live operational state
+- `L10`: editable local working state
+- `CONTENT`: untrusted user, remote, and tool content
+- `TRANSCRIPT`: optional historical residue
+
+Out of scope:
+- system prompts
+- immutable operator control
+- top-level instruction hierarchy
+- runtime-specific control-plane composition
+
+## Why This Exists
+
+Current agent systems have three recurring failures:
+
+1. Untrusted text can silently masquerade as authority.
+2. Chat-history continuity is repetitive, lossy, and expensive.
+3. Remote context exchange is unsafe by default when structure and trust are not explicit.
+
+ContextGate treats prompt-visible continuity as a typed state transport problem instead of a transcript-reconstruction problem.
+
+## Design Principles
+
+- structured prompt-visible state, not freeform prompt stuffing
+- replaceable live state, not endless append-only context
+- explicit trust boundaries, not implicit prose conventions
+- minimal integration surface, not framework lock-in
+- prompt-visible context only, not system-instruction ownership
+
+## Intended Developer Experience
+
+The target integration should feel like a thin wrapper:
+
+```python
+import contextgate as cg
+
+gate = cg.ContextGate()
+
+prompt = gate.render(
+    base_prompt=prompt,
+    hud=hud,
+    desktop=desktop,
+    transcript=transcript,
+)
+
+response = llm.generate(prompt)
+
+update = gate.extract_update(response)
+gate.apply_update(update)
+
+final_text = gate.visible_text(response)
+```
+
+Important constraint:
+- `extract_update` should only read a strict structured update channel
+- it should not infer state updates from arbitrary prose
+
+## Initial Deliverables
+
+A practical `v0` likely includes:
+
+- schema definition for prompt-visible context envelopes
+- trust classification rules
+- validation and merge rules
+- replace/delta semantics for HUD updates
+- a small reference implementation
+- a demo showing naive prompt assembly versus protected prompt assembly
+
+## Product Split
+
+- Product: `ContextGate`
+- Engine: `HeaderForge`
+- Protocol: `Context Headers Protocol`
+
+## Status
+
+This repository starts as the private working repo for the protocol, reference API, and initial README/spec work.
