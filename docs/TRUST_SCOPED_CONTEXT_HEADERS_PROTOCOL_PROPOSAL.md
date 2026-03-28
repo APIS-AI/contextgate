@@ -292,6 +292,7 @@ Example values:
 - `expected_type=string`
 - `expected_type=integer`
 - `expected_type=boolean`
+- `expected_type=timestamp`
 - `expected_type=object`
 - `expected_type=array`
 - `override_mode=replace`
@@ -303,7 +304,7 @@ Example values:
 
 Type expectations are part of the defense model.
 
-If a field is expected to be a number, boolean, enum, or bounded object shape, then arbitrary instruction text is much easier to reject before prompt assembly. Type mismatch should default to rejection, downgrade, or local-only quarantine rather than best-effort coercion.
+If a field is expected to be a number, boolean, timestamp, enum, or bounded object shape, then arbitrary instruction text is much easier to reject before prompt assembly. A timestamp is still text at the transport layer, but it is not freeform text: it should be validated against a known format such as RFC 3339 or ISO 8601 before it is admitted. Type mismatch should default to rejection, downgrade, or local-only quarantine rather than best-effort coercion.
 
 ---
 
