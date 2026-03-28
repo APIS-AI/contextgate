@@ -84,10 +84,13 @@ The separation matters:
 ## Design Principles
 
 - structured prompt-visible state, not freeform prompt stuffing
+- expected data types per field, not best-effort coercion
 - replaceable live state, not endless append-only context
 - explicit trust boundaries, not implicit prose conventions
 - minimal integration surface, not framework lock-in
 - prompt-visible context only, not system-instruction ownership
+
+Type expectations matter because a field that must be an integer, boolean, enum, or bounded object is much harder to poison with instruction text than a field that silently accepts arbitrary strings.
 
 ## Intended Developer Experience
 

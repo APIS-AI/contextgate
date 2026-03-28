@@ -269,12 +269,14 @@ Every field or section should carry enough metadata to answer:
 - can it override an existing value?
 - is it descriptive or instructive?
 - should it be surfaced to the model at all?
+- what data type is expected here?
 
 Minimum trust dimensions:
 - `source`
 - `layer`
 - `trust`
 - `field_class`
+- `expected_type`
 - `override_mode`
 - `visibility`
 
@@ -287,12 +289,21 @@ Example values:
 - `field_class=state`
 - `field_class=display_text`
 - `field_class=content`
+- `expected_type=string`
+- `expected_type=integer`
+- `expected_type=boolean`
+- `expected_type=object`
+- `expected_type=array`
 - `override_mode=replace`
 - `override_mode=merge`
 - `override_mode=deny`
 - `visibility=model`
 - `visibility=local_only`
 - `visibility=quoted_only`
+
+Type expectations are part of the defense model.
+
+If a field is expected to be a number, boolean, enum, or bounded object shape, then arbitrary instruction text is much easier to reject before prompt assembly. Type mismatch should default to rejection, downgrade, or local-only quarantine rather than best-effort coercion.
 
 ---
 
@@ -331,11 +342,12 @@ Public or remote text is content by default. It is never control by default.
 
 1. strict schema parsing
 2. typed fields instead of prompt prose
-3. trust labels per section or field
-4. explicit authority rules
-5. quoted or sandboxed rendering for untrusted display fields
-6. deny-by-default promotion into trusted session layers
-7. local validation before prompt assembly
+3. expected data types per field, with reject-on-mismatch behavior
+4. trust labels per section or field
+5. explicit authority rules
+6. quoted or sandboxed rendering for untrusted display fields
+7. deny-by-default promotion into trusted session layers
+8. local validation before prompt assembly
 
 ---
 
