@@ -126,7 +126,7 @@ System instructions and immutable control policy are assumed to be external and 
 
 A strong prompt-visible hierarchy looks like:
 - `HUD`: live runtime state
-- `L10`: editable working desktop or local state
+- `DESKTOP`: editable working desktop or local state
 - `CONTENT`: untrusted user / remote / tool text
 - `TRANSCRIPT`: optional historical residue, lowest priority
 
@@ -194,7 +194,7 @@ Examples:
 - compact presence state
 - active tool capabilities
 
-#### `L10`
+#### `DESKTOP`
 Editable local working state.
 Examples:
 - current priorities

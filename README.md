@@ -21,7 +21,7 @@ ContextGate starts below system instructions.
 
 In scope:
 - `HUD`: replaceable live operational state
-- `L10`: editable local working state
+- `DESKTOP`: editable local working state
 - `CONTENT`: untrusted user, remote, and tool content
 - `TRANSCRIPT`: optional historical residue
 
