@@ -228,11 +228,41 @@ Historical residue. Useful, but not authoritative.
 
 Without a dedicated `HUD`, systems tend to spread live state across chat history, tool outputs, and summaries. That increases token waste and makes current state harder to identify reliably.
 
-### 7.3 Key Rule
+### 7.3 Initial HUD Schema Handshake
+
+`ContextGate` should not permanently hardcode one HUD field set as the protocol model.
+
+For `v0`, the protocol should allow a very small schema handshake so a producer can declare which HUD fields it may send and how those fields should be validated.
+
+That keeps the protocol general while keeping the first implementation simple.
+
+Example:
+
+```json
+{
+  "hud_schema": {
+    "version": "v0",
+    "fields": {
+      "current_room_id": { "expected_type": "string" },
+      "participant_count": { "expected_type": "integer" },
+      "last_event_at": { "expected_type": "timestamp" }
+    }
+  }
+}
+```
+
+Receiver behavior should stay simple:
+- accept known fields
+- reject or ignore unknown fields
+- validate every admitted field against its declared type
+
+The reference implementation may still ship with a built-in default HUD profile so the demo path stays easy.
+
+### 7.4 Key Rule
 
 **Remote data may update prompt-visible state, but remote data may not silently become authority.**
 
-### 7.4 HeaderForge Example
+### 7.5 HeaderForge Example
 
 `DESKTOP` still makes sense as a trusted local `HeaderForge` example.
 
@@ -462,6 +492,7 @@ A response parser should:
 
 ### 10.4 Optional Extensions
 
+- `hud_schema`
 - `ctx_ref`
 - `ctx_delta`
 - `ctx_signature`
@@ -607,6 +638,13 @@ safe_context = ContextAssembler().assemble(
 )
 ```
 
+For `v0`, a runtime may also register a built-in HUD profile locally and use the remote handshake only when needed:
+
+```python
+gate = ContextGate(default_hud_schema=DefaultHudV0)
+gate.register_hud_schema(remote_packet.get("hud_schema"))
+```
+
 Or even thinner:
 
 ```python
@@ -639,6 +677,7 @@ It should be a narrow reference package.
   - envelope definitions
   - section types
   - field validation rules
+  - HUD schema handshake definitions
 
 - `classify.py`
   - trust classification
@@ -714,6 +753,7 @@ Scenario:
 
 Protected result:
 - receiver validates schema
+- receiver accepts or rejects the advertised HUD schema
 - preserves trust boundaries
 - incorporates operational state without turning remote text into control
 

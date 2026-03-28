@@ -64,6 +64,32 @@ It should carry compact runtime facts such as:
 
 Without `HUD`, systems tend to smear live state across transcript text, tool output, and summaries. That wastes tokens and makes the current state harder to identify reliably.
 
+## Minimal HUD Handshake
+
+`ContextGate` should not permanently assume one hardcoded HUD field set.
+
+For `v0`, the protocol can stay simple and still support a tiny HUD schema handshake:
+
+```json
+{
+  "hud_schema": {
+    "version": "v0",
+    "fields": {
+      "current_room_id": { "expected_type": "string" },
+      "participant_count": { "expected_type": "integer" },
+      "last_event_at": { "expected_type": "timestamp" }
+    }
+  }
+}
+```
+
+Receiver behavior should be minimal:
+- accept known fields
+- ignore or reject unknown ones
+- validate every admitted field against its declared type
+
+The first reference implementation can still ship with one built-in default HUD profile so adoption stays easy.
+
 ## HeaderForge Example
 
 `DESKTOP` still makes sense as a trusted local `HeaderForge` example.
@@ -106,6 +132,13 @@ update = gate.extract_update(response)
 gate.apply_update(update)
 
 final_text = gate.visible_text(response)
+```
+
+For the first implementation, the core can stay schema-driven while the demo ships with a default HUD profile:
+
+```python
+gate = ContextGate(default_hud_schema=DefaultHudV0)
+gate.register_hud_schema(remote_packet.get("hud_schema"))
 ```
 
 Important constraint:
@@ -155,6 +188,7 @@ A practical `v0` likely includes:
 - schema definition for prompt-visible context envelopes
 - trust classification rules
 - validation and merge rules
+- minimal HUD schema handshake support
 - replace/delta semantics for HUD updates
 - a small reference implementation
 - a demo showing naive prompt assembly versus protected prompt assembly
