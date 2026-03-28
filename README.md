@@ -53,6 +53,34 @@ Practical distinction:
 - `HUD` = runtime facts and environment status
 - `DESKTOP` = current notes, priorities, and working state
 
+## Why HUD Exists
+
+`HUD` exists so an agent does not have to reconstruct current reality from transcript residue.
+
+It should carry compact runtime facts such as:
+- where the agent is
+- what room, task, or resource is active
+- current health or connection state
+- immediate counters, presence, and status flags
+
+Without `HUD`, systems tend to smear live state across transcript text, tool output, and summaries. That wastes tokens and makes the current state harder to identify reliably.
+
+## Why DESKTOP Exists
+
+`DESKTOP` exists so an agent can keep a small editable working surface that is distinct from live environment state.
+
+It should carry current working material such as:
+- priorities
+- temporary notes
+- active decisions
+- task-specific scratch context
+
+Without `DESKTOP`, systems tend to mix scratch work with transcript history or tool content. That makes editing, replacing, and preserving current working context much harder.
+
+The separation matters:
+- `HUD` tells the agent what is true right now
+- `DESKTOP` tells the agent what it is actively working with
+
 ## Design Principles
 
 - structured prompt-visible state, not freeform prompt stuffing

@@ -227,7 +227,34 @@ Examples:
 #### `TRANSCRIPT`
 Historical residue. Useful, but not authoritative.
 
-### 7.2 Key Rule
+### 7.2 Why `HUD` Exists
+
+`HUD` exists so the agent can receive a compact statement of current reality on every turn without reconstructing that reality from transcript residue.
+
+`HUD` should answer questions like:
+- where am I?
+- what is active right now?
+- what is the current runtime or connection state?
+- what immediate facts matter for this turn?
+
+Without a dedicated `HUD`, systems tend to spread live state across chat history, tool outputs, and summaries. That increases token waste and makes current state harder to identify reliably.
+
+### 7.3 Why `DESKTOP` Exists
+
+`DESKTOP` exists so the agent can maintain a small editable working surface that is distinct from environment telemetry.
+
+`DESKTOP` should answer questions like:
+- what am I actively working on?
+- what temporary notes or priorities should stay in view?
+- what local decisions or scratch context matter right now?
+
+Without a dedicated `DESKTOP`, systems tend to mix working context into transcript history or tool content. That makes editing and replacing current working context much harder.
+
+The separation matters:
+- `HUD` tells the agent what is true right now
+- `DESKTOP` tells the agent what it is actively working with
+
+### 7.4 Key Rule
 
 **Remote data may update prompt-visible state, but remote data may not silently become authority.**
 
