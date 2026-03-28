@@ -24,7 +24,6 @@ ContextGate starts below system instructions.
 
 In scope:
 - `HUD`: replaceable live operational state about what is true right now
-- `DESKTOP`: editable working state the agent is actively using
 - `CONTENT`: untrusted user, remote, and tool content
 - `TRANSCRIPT`: optional historical residue
 
@@ -51,7 +50,7 @@ The intended steady-state cost is:
 
 Practical distinction:
 - `HUD` = runtime facts and environment status
-- `DESKTOP` = current notes, priorities, and working state
+- `CONTENT` = untrusted user, remote, and tool content
 
 ## Why HUD Exists
 
@@ -65,21 +64,11 @@ It should carry compact runtime facts such as:
 
 Without `HUD`, systems tend to smear live state across transcript text, tool output, and summaries. That wastes tokens and makes the current state harder to identify reliably.
 
-## Why DESKTOP Exists
+## HeaderForge Example
 
-`DESKTOP` exists so an agent can keep a small editable working surface that is distinct from live environment state.
+`DESKTOP` still makes sense as a trusted local `HeaderForge` example.
 
-It should carry current working material such as:
-- priorities
-- temporary notes
-- active decisions
-- task-specific scratch context
-
-Without `DESKTOP`, systems tend to mix scratch work with transcript history or tool content. That makes editing, replacing, and preserving current working context much harder.
-
-The separation matters:
-- `HUD` tells the agent what is true right now
-- `DESKTOP` tells the agent what it is actively working with
+A runtime may render local working files into a `DESKTOP` header and inject that into prompt-visible context, but that behavior is implementation-defined and outside the ContextGate wire protocol.
 
 ## Design Principles
 
@@ -108,7 +97,6 @@ gate = cg.ContextGate()
 prompt = gate.render(
     base_prompt=prompt,
     hud=hud,
-    desktop=desktop,
     transcript=transcript,
 )
 
@@ -139,12 +127,6 @@ parsed = gate.parse_envelope(envelope)
             "room_id": {"type": "string", "value": "room_123"},
             "connected": {"type": "boolean", "value": True},
             "pending_requests": {"type": "integer", "value": 2},
-        },
-    },
-    "desktop": {
-        "mode": "merge",
-        "fields": {
-            "active_goal": {"type": "string", "value": "finish protocol memo"},
         },
     },
     "content": [

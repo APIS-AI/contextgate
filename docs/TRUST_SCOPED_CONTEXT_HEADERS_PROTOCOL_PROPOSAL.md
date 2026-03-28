@@ -133,7 +133,6 @@ System instructions and immutable control policy are assumed to be external and 
 
 A strong prompt-visible hierarchy looks like:
 - `HUD`: live operational state about what is true right now
-- `DESKTOP`: editable working state the agent is actively using
 - `CONTENT`: untrusted user / remote / tool text
 - `TRANSCRIPT`: optional historical residue, lowest priority
 
@@ -203,16 +202,6 @@ Examples:
 - compact presence state
 - active tool capabilities
 
-#### `DESKTOP`
-Editable local working state.
-This is working memory, not environment telemetry.
-It answers: what is the agent actively working with right now?
-Examples:
-- current priorities
-- temporary notes
-- active design decisions
-- local task state
-
 #### `CONTENT`
 Untrusted human/remote/tool text.
 Examples:
@@ -239,24 +228,15 @@ Historical residue. Useful, but not authoritative.
 
 Without a dedicated `HUD`, systems tend to spread live state across chat history, tool outputs, and summaries. That increases token waste and makes current state harder to identify reliably.
 
-### 7.3 Why `DESKTOP` Exists
-
-`DESKTOP` exists so the agent can maintain a small editable working surface that is distinct from environment telemetry.
-
-`DESKTOP` should answer questions like:
-- what am I actively working on?
-- what temporary notes or priorities should stay in view?
-- what local decisions or scratch context matter right now?
-
-Without a dedicated `DESKTOP`, systems tend to mix working context into transcript history or tool content. That makes editing and replacing current working context much harder.
-
-The separation matters:
-- `HUD` tells the agent what is true right now
-- `DESKTOP` tells the agent what it is actively working with
-
-### 7.4 Key Rule
+### 7.3 Key Rule
 
 **Remote data may update prompt-visible state, but remote data may not silently become authority.**
+
+### 7.4 HeaderForge Example
+
+`DESKTOP` still makes sense as a trusted local `HeaderForge` example.
+
+A runtime may render local working files into a `DESKTOP` header and inject that into prompt-visible context, but that behavior is implementation-defined and outside the ContextGate wire protocol.
 
 ---
 
@@ -405,12 +385,6 @@ A minimal envelope could look like this:
       "pending_requests": 2
     }
   },
-  "desktop": {
-    "mode": "merge",
-    "state": {
-      "active_goal": "finish protocol memo"
-    }
-  },
   "content": [
     {
       "source": "remote_public_node",
@@ -446,12 +420,6 @@ Example normalized parser output:
             "room_id": {"type": "string", "value": "room_123"},
             "connected": {"type": "boolean", "value": True},
             "pending_requests": {"type": "integer", "value": 2},
-        },
-    },
-    "desktop": {
-        "mode": "merge",
-        "fields": {
-            "active_goal": {"type": "string", "value": "finish protocol memo"},
         },
     },
     "content": [
@@ -490,10 +458,9 @@ A response parser should:
 - `ctx_version`
 - `ctx_auth`
 - `hud`
-- `desktop`
 - `content`
 
-### 10.2 Optional Extensions
+### 10.4 Optional Extensions
 
 - `ctx_ref`
 - `ctx_delta`
@@ -518,10 +485,10 @@ That means:
 
 ### 11.2 Merge Semantics
 
-Some local working state can be merged.
+Some protocol sections may still support merge behavior where appropriate, but local working state such as `DESKTOP` should be treated as a separate HeaderForge concern rather than a ContextGate transport section.
 Examples:
-- sticky local notes
-- task scratch state
+- additive low-risk metadata
+- append-safe counters or tags
 
 ### 11.3 Delta Support
 
