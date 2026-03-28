@@ -27,9 +27,16 @@ It is unsafe because untrusted external text can silently masquerade as authorit
 
 This proposal defines a **trust-scoped context headers protocol**: a small, typed, replaceable context envelope that can be transported locally or across remote boundaries and cleanly separated from transcript content.
 
+At steady state, only one active ContextGate envelope should be present in prompt-visible context. Older envelopes should be stripped before the next turn is assembled, so overhead stays small and bounded.
+
 This project does **not** attempt to own system instructions or immutable top-level control policy. Those remain a separate control-plane problem.
 
 The goal is not to replace existing agent stacks. The goal is to provide a thin, drop-in boundary layer that developers can plug into their existing prompt assembly pipeline.
+
+The intended steady-state cost is low:
+- one current envelope in prompt-visible context
+- old envelopes removed before the next turn
+- compact snapshots or deltas instead of repeated full copies
 
 ---
 
@@ -138,7 +145,7 @@ The protocol should:
 
 1. provide deterministic re-orientation every turn
 2. reduce repeated context duplication
-3. support replace-not-append semantics for live state
+3. support singleton replace-not-append semantics for live state
 4. preserve trust boundaries inside prompt-visible context
 5. work across local and remote agent boundaries
 6. fit into existing pipelines with minimal integration work
@@ -343,7 +350,7 @@ A minimal envelope could look like this:
 - `ctx_version`
 - `ctx_auth`
 - `hud`
-- `l10`
+- `desktop`
 - `content`
 
 ### 10.2 Optional Extensions
@@ -363,7 +370,9 @@ A minimal envelope could look like this:
 Live HUD state should normally be **replaceable**.
 
 That means:
+- only one current HUD block should exist in prompt-visible context
 - latest HUD replaces previous HUD
+- previous HUD should be stripped before the next turn is assembled
 - old copies should not stack in prompt history
 - consumers should not append redundant state snapshots
 
@@ -587,6 +596,7 @@ Naive result:
 - transcript grows with repeated copies
 
 Protected result:
+- one active ContextGate envelope remains in prompt-visible context
 - HUD replaces previous HUD
 - only changed fields or compact state are sent
 

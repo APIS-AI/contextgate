@@ -6,9 +6,12 @@ It is designed to solve a narrow but increasingly important infrastructure probl
 
 ContextGate introduces a thin, drop-in boundary layer that developers can place in front of an existing prompt assembly pipeline.
 
+At steady state, only one active ContextGate envelope should be present in prompt-visible context. Older copies are stripped before the next turn, so the protocol adds very little overhead compared with transcript-style repetition.
+
 ## What It Does
 
 - injects a fresh structured context overlay on each turn
+- keeps only one current context envelope in prompt-visible state
 - separates prompt-visible state from transcript residue
 - supports replace-not-append semantics for live HUD state
 - classifies prompt-visible inputs by trust and role
@@ -40,6 +43,11 @@ Current agent systems have three recurring failures:
 3. Remote context exchange is unsafe by default when structure and trust are not explicit.
 
 ContextGate treats prompt-visible continuity as a typed state transport problem instead of a transcript-reconstruction problem.
+
+The intended steady-state cost is:
+- one current envelope
+- old envelopes removed
+- compact snapshots or deltas when possible
 
 ## Design Principles
 
