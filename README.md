@@ -184,7 +184,14 @@ That example shows useful runtime facts an agent may actually need:
 For a trusted local `HeaderForge` example built from files, see:
 - `examples/headerforge_desktop_from_files.py`
 
-That example reads a local directory, selects a small set of files, and renders a trusted local `DESKTOP` header outside the `ContextGate` wire protocol.
+That example supports:
+- `--include-ext` to narrow surfaced file types
+- `--exclude-glob` to skip local paths or directories
+
+## End-To-End Example
+
+For a full prompt assembly example combining trusted `DESKTOP`, trusted `HUD`, and untrusted `CONTENT`, see:
+- `examples/end_to_end_prompt_assembly.py`
 
 ## CLI Helper
 
@@ -193,9 +200,12 @@ A small CLI is included to validate and normalize envelopes from a file or stdin
 ```bash
 contextgate envelope.json
 cat rendered_prompt.txt | contextgate
+cat model_output.txt | contextgate --update
 ```
 
-The CLI prints the normalized parsed envelope as JSON.
+The CLI can:
+- normalize full envelopes
+- extract and validate only the update channel
 
 ## HeaderForge
 
@@ -221,6 +231,7 @@ demo/
 examples/
   trusted_hud_from_os.py
   headerforge_desktop_from_files.py
+  end_to_end_prompt_assembly.py
 
 tests/
   test_parser.py

@@ -8,6 +8,7 @@ from typing import Any
 
 from .parser import parse_envelope
 from .schemas import parse_hud_schema
+from .update_channel import extract_update
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -21,6 +22,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--schema",
         help="Optional path to a HUD schema JSON file used as the default schema.",
+    )
+    parser.add_argument(
+        "--update",
+        action="store_true",
+        help="Parse only the CONTEXTGATE update channel from model output.",
     )
     return parser
 
@@ -46,11 +52,16 @@ def main(argv: list[str] | None = None) -> int:
     default_schema = load_schema(args.schema)
 
     try:
-        try:
-            payload: dict[str, Any] | str = json.loads(raw_text)
-        except json.JSONDecodeError:
-            payload = raw_text
-        normalized = parse_envelope(payload, default_hud_schema=default_schema)
+        if args.update:
+            normalized = extract_update(raw_text)
+            if normalized is None:
+                raise ValueError("No CONTEXTGATE update block found")
+        else:
+            try:
+                payload: dict[str, Any] | str = json.loads(raw_text)
+            except json.JSONDecodeError:
+                payload = raw_text
+            normalized = parse_envelope(payload, default_hud_schema=default_schema)
     except Exception as exc:
         print(f"contextgate: {exc}", file=sys.stderr)
         return 1

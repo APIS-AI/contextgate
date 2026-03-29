@@ -1,6 +1,5 @@
 import json
 from io import StringIO
-from pathlib import Path
 
 from contextgate.cli import main
 
@@ -37,3 +36,13 @@ def test_cli_normalizes_rendered_prompt_from_stdin(monkeypatch, capsys) -> None:
     out = capsys.readouterr().out
     normalized = json.loads(out)
     assert normalized["hud"]["fields"]["current_room_id"] == "room_123"
+
+
+def test_cli_extracts_update_channel(monkeypatch, capsys) -> None:
+    response = "Visible text\n<CONTEXTGATE_UPDATE>{\"hud\":{\"mode\":\"merge\",\"fields\":{\"participant_count\":5}}}</CONTEXTGATE_UPDATE>"
+    monkeypatch.setattr("sys.stdin", StringIO(response))
+
+    assert main(["--update"]) == 0
+    out = capsys.readouterr().out
+    update = json.loads(out)
+    assert update["hud"]["mode"] == "merge"
