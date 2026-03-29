@@ -275,6 +275,9 @@ For a shell-level reject path, see:
 For a structured event-log pipeline, see:
 - `examples/cli_event_log_pipeline.sh`
 
+For a full stderr side-channel pipeline with update, size, and diff output, see:
+- `examples/cli_stderr_all_pipeline.sh`
+
 For a minimal copyable event shape, see:
 - `examples/event_log_shape.json`
 
@@ -291,6 +294,7 @@ cat model_output.txt | contextgate --apply-update --state state.json --render --
 cat model_output.txt | contextgate --apply-update --state state.json --write-state state.json --compact-json
 contextgate event.json --update --read-update-from-field event.assistant_text
 cat model_output.txt | contextgate --apply-update --state state.json --write-state state.json --stdout visible-text --stderr update-json
+cat model_output.txt | contextgate --apply-update --state state.json --stdout visible-text --stderr all --report-diff
 ```
 
 The CLI can:
@@ -304,6 +308,7 @@ The CLI can:
 - read model output text from a field inside a JSON log object
 - print only visible response text while machine state is persisted elsewhere
 - emit validated update JSON to stderr for side-channel machine inspection
+- emit a structured before/after diff for applied state changes
 
 Policy flags supported by `--apply-update`:
 - `--state`
@@ -321,6 +326,7 @@ Policy flags supported by `--apply-update`:
 - `--read-update-from-field`
 - `--stdout json|render|visible-text`
 - `--stderr update-json|all`
+- `--report-diff`
 
 Example `reject` path:
 
@@ -369,6 +375,14 @@ cat model_output.txt | contextgate --apply-update --state state.json --write-sta
 ```
 
 That emits visible assistant text to stdout while sending the validated machine update JSON to stderr.
+
+Example full machine side-channel flow for a CLI agent:
+
+```bash
+cat model_output.txt | contextgate --apply-update --state state.json --stdout visible-text --stderr all --report-diff
+```
+
+That emits visible assistant text to stdout while sending validated update JSON, size data, and a structured before/after diff to stderr.
 
 For `v0`, update-channel validation is intentionally strict:
 - only supported top-level sections are accepted

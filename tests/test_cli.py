@@ -412,6 +412,106 @@ def test_cli_emits_update_json_to_stderr(tmp_path, monkeypatch, capsys) -> None:
     assert 'contextgate: update-json {"hud":{"fields":{"participant_count":5},"mode":"merge"}}' in captured.err
 
 
+def test_cli_reports_diff_json_after_apply(tmp_path, monkeypatch, capsys) -> None:
+    state_path = tmp_path / "state.json"
+    state_path.write_text(
+        json.dumps(
+            {
+                "ctx_version": "0.1",
+                "auth": {"source": "local_runtime", "trust": "trusted"},
+                "hud": {"mode": "replace", "fields": {"participant_count": 2}},
+                "content": [
+                    {
+                        "label": "room_title",
+                        "field_class": "display_text",
+                        "trust": "untrusted",
+                        "value": "Main Room",
+                    }
+                ],
+                "transcript": ["Older residue"],
+            }
+        )
+    )
+    response = """Summary: Room updated.
+<CONTEXTGATE_UPDATE>{"hud":{"mode":"merge","fields":{"participant_count":5}},"content":{"mode":"merge","items":[{"label":"latest_message","field_class":"message_text","trust":"untrusted","value":"Hello"}]},"transcript":{"mode":"merge","items":["Newest residue"]}}</CONTEXTGATE_UPDATE>"""
+    monkeypatch.setattr("sys.stdin", StringIO(response))
+
+    assert (
+        main(
+            [
+                "--apply-update",
+                "--state",
+                str(state_path),
+                "--stdout",
+                "visible-text",
+                "--report-diff",
+            ]
+        )
+        == 0
+    )
+    captured = capsys.readouterr()
+    assert "Summary: Room updated." in captured.out
+    assert 'contextgate: diff-json {"content":{"added":[{"field_class":"message_text","label":"latest_message","trust":"untrusted","value":"Hello"}],"removed":[]}' in captured.err
+    assert '"participant_count":{"after":5,"before":2}' in captured.err
+    assert '"transcript":{"added":["Newest residue"],"removed":[]}' in captured.err
+
+
+def test_cli_rejects_report_diff_without_apply_update(tmp_path, capsys) -> None:
+    envelope_path = tmp_path / "envelope.json"
+    envelope_path.write_text(
+        json.dumps(
+            {
+                "ctx_version": "0.1",
+                "auth": {"source": "local_runtime", "trust": "trusted"},
+                "hud": {"mode": "replace", "fields": {"participant_count": 2}},
+                "content": [],
+                "transcript": [],
+            }
+        )
+    )
+
+    assert main([str(envelope_path), "--report-diff"]) == 1
+    err = capsys.readouterr().err
+    assert "--report-diff requires --apply-update" in err
+
+
+def test_cli_stderr_all_includes_update_and_sizes(tmp_path, monkeypatch, capsys) -> None:
+    state_path = tmp_path / "state.json"
+    state_path.write_text(
+        json.dumps(
+            {
+                "ctx_version": "0.1",
+                "auth": {"source": "local_runtime", "trust": "trusted"},
+                "hud": {"mode": "replace", "fields": {"participant_count": 2}},
+                "content": [],
+                "transcript": [],
+            }
+        )
+    )
+    response = """Summary: Room updated.
+<CONTEXTGATE_UPDATE>{"hud":{"mode":"merge","fields":{"participant_count":5}}}</CONTEXTGATE_UPDATE>"""
+    monkeypatch.setattr("sys.stdin", StringIO(response))
+
+    assert (
+        main(
+            [
+                "--apply-update",
+                "--state",
+                str(state_path),
+                "--stdout",
+                "visible-text",
+                "--stderr",
+                "all",
+            ]
+        )
+        == 0
+    )
+    captured = capsys.readouterr()
+    assert "Summary: Room updated." in captured.out
+    assert 'contextgate: update-json {"hud":{"fields":{"participant_count":5},"mode":"merge"}}' in captured.err
+    assert "contextgate: size hud_fields=1 content_items=0 transcript_items=0" in captured.err
+
+
 def test_cli_rejects_stderr_update_json_for_envelope_mode(tmp_path, capsys) -> None:
     envelope_path = tmp_path / "envelope.json"
     envelope_path.write_text(

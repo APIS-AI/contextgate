@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
@@ -84,6 +85,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--report-sizes",
         action="store_true",
         help="Print active state sizes to stderr after successful normalization or apply.",
+    )
+    parser.add_argument(
+        "--report-diff",
+        action="store_true",
+        help="Print a structured before/after diff to stderr after --apply-update succeeds.",
     )
     parser.add_argument(
         "--write-state",
@@ -211,6 +217,68 @@ def emit_update_json(update: dict[str, Any]) -> None:
     )
 
 
+def canonical_item(value: Any) -> str:
+    return json.dumps(value, separators=(",", ":"), sort_keys=True)
+
+
+def diff_sequence(before: list[Any], after: list[Any]) -> dict[str, list[Any]]:
+    before_counts = Counter(canonical_item(item) for item in before)
+    after_counts = Counter(canonical_item(item) for item in after)
+    added: list[Any] = []
+    removed: list[Any] = []
+
+    for item in after:
+        key = canonical_item(item)
+        if before_counts.get(key, 0) > 0:
+            before_counts[key] -= 1
+        else:
+            added.append(item)
+
+    for item in before:
+        key = canonical_item(item)
+        if after_counts.get(key, 0) > 0:
+            after_counts[key] -= 1
+        else:
+            removed.append(item)
+
+    return {"added": added, "removed": removed}
+
+
+def build_diff(before: dict[str, Any], after: dict[str, Any]) -> dict[str, Any]:
+    before_fields = before.get("hud", {}).get("fields", {})
+    after_fields = after.get("hud", {}).get("fields", {})
+    changed_fields: dict[str, dict[str, Any]] = {}
+    removed_fields: list[str] = []
+
+    for key in sorted(set(before_fields) | set(after_fields)):
+        if key not in after_fields:
+            removed_fields.append(key)
+        elif key not in before_fields or before_fields[key] != after_fields[key]:
+            changed_fields[key] = {
+                "before": before_fields.get(key),
+                "after": after_fields.get(key),
+            }
+
+    return {
+        "hud": {
+            "changed_fields": changed_fields,
+            "removed_fields": removed_fields,
+        },
+        "content": diff_sequence(before.get("content", []), after.get("content", [])),
+        "transcript": diff_sequence(
+            before.get("transcript", []), after.get("transcript", [])
+        ),
+    }
+
+
+def emit_diff_json(diff: dict[str, Any]) -> None:
+    print(
+        "contextgate: diff-json "
+        + json.dumps(diff, separators=(",", ":"), sort_keys=True),
+        file=sys.stderr,
+    )
+
+
 def resolve_stdout_mode(args: argparse.Namespace) -> str:
     if args.stdout:
         return args.stdout
@@ -227,6 +295,7 @@ def main(argv: list[str] | None = None) -> int:
     default_schema = load_schema(args.schema)
     visible_text: str | None = None
     extracted_update: dict[str, Any] | None = None
+    state_diff: dict[str, Any] | None = None
 
     if args.read_update_from_field:
         try:
@@ -241,12 +310,14 @@ def main(argv: list[str] | None = None) -> int:
             gate = build_gate(args, default_schema)
             if args.state:
                 load_initial_state(args.state, gate)
+            before_state = gate.build_envelope()
             visible_text = strip_update(raw_text)
             extracted_update = gate.extract_update(raw_text)
             if extracted_update is None:
                 raise ValueError("No CONTEXTGATE update block found")
             gate.apply_update(extracted_update)
             normalized = gate.build_envelope()
+            state_diff = build_diff(before_state, normalized)
         elif args.update:
             visible_text = strip_update(raw_text)
             extracted_update = extract_update(raw_text, hud_schema=default_schema)
@@ -271,6 +342,12 @@ def main(argv: list[str] | None = None) -> int:
 
     if (args.report_sizes or args.stderr == "all") and isinstance(normalized, dict):
         emit_size_report(normalized)
+
+    if args.report_diff:
+        if state_diff is None:
+            print("contextgate: --report-diff requires --apply-update", file=sys.stderr)
+            return 1
+        emit_diff_json(state_diff)
 
     if args.write_state and isinstance(normalized, dict):
         write_state(args.write_state, normalized)
