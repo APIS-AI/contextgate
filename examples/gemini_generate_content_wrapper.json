@@ -1,0 +1,15 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "role": "model",
+        "parts": [
+          {
+            "text": "Summary: Room updated.\n<CONTEXTGATE_UPDATE>{\"hud\":{\"mode\":\"merge\",\"fields\":{\"participant_count\":5}}}</CONTEXTGATE_UPDATE>"
+          }
+        ]
+      },
+      "finishReason": "STOP"
+    }
+  ]
+}

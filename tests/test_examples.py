@@ -242,6 +242,23 @@ def test_cli_anthropic_messages_wrapper_pipeline_example_runs() -> None:
     assert '"participant_count":5' in result.stdout
 
 
+def test_cli_gemini_generate_content_pipeline_example_runs() -> None:
+    result = subprocess.run(
+        ["bash", "examples/cli_gemini_generate_content_pipeline.sh"],
+        cwd=REPO_ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    assert "VISIBLE TEXT" in result.stdout
+    assert "Summary: Room updated." in result.stdout
+    assert "STDERR CHANNEL" in result.stdout
+    assert "contextgate: update-json" in result.stdout
+    assert "UPDATED STATE" in result.stdout
+    assert '"participant_count":5' in result.stdout
+
+
 def test_cli_hud_diff_example_runs() -> None:
     result = subprocess.run(
         ["bash", "examples/cli_hud_diff.sh"],
@@ -310,3 +327,11 @@ def test_cli_shell_lib_demo_example_runs() -> None:
     assert "DIFF CHANNEL" in result.stdout
     assert "FAILURE EXIT 2" in result.stdout
     assert "FAILURE CATEGORY usage" in result.stdout
+
+
+def test_stderr_json_record_schema_example_is_well_formed() -> None:
+    schema_path = REPO_ROOT / "examples/stderr_json_record.schema.json"
+    payload = schema_path.read_text()
+    assert '"$schema"' in payload
+    assert '"channel"' in payload
+    assert '"enum": ["update", "size", "diff"]' in payload

@@ -293,6 +293,9 @@ For an OpenAI-style chat wrapper pipeline, see:
 For an Anthropic-style messages wrapper pipeline, see:
 - `examples/cli_anthropic_messages_wrapper_pipeline.sh`
 
+For a Gemini-style generateContent wrapper pipeline, see:
+- `examples/cli_gemini_generate_content_pipeline.sh`
+
 For scoped diff shell examples, see:
 - `examples/cli_hud_diff.sh`
 - `examples/cli_transcript_diff.sh`
@@ -315,6 +318,12 @@ For a minimal provider-wrapper event shape, see:
 
 For a minimal OpenAI-style chat wrapper shape, see:
 - `examples/openai_chat_completions_wrapper.json`
+
+For a minimal Gemini-style generateContent wrapper shape, see:
+- `examples/gemini_generate_content_wrapper.json`
+
+For a machine-readable schema of `--stderr-json` records, see:
+- `examples/stderr_json_record.schema.json`
 
 ## CLI Helper
 
@@ -399,6 +408,9 @@ cat model_output.txt | contextgate --apply-update --state state.json --stderr-js
 
 That emits JSON stderr records for update, size, and diff channels.
 
+The record shape is documented in:
+- `examples/stderr_json_record.schema.json`
+
 Example `reject` path:
 
 ```bash
@@ -454,6 +466,14 @@ contextgate examples/anthropic_messages_wrapper.json --apply-update --state stat
 ```
 
 That shows the same extraction path against a messages-style wrapper where assistant text lives under `content.0.text`.
+
+Example Gemini-style generateContent wrapper flow for a CLI agent:
+
+```bash
+contextgate examples/gemini_generate_content_wrapper.json --apply-update --state state.json --read-update-from-field candidates.0.content.parts.0.text
+```
+
+That shows the same extraction path against a generateContent-style wrapper where assistant text lives under `candidates.0.content.parts.0.text`.
 
 List segments in `--read-update-from-field` may be numeric indexes, including negative indexes for tail selection:
 

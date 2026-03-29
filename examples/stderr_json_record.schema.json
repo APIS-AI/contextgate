@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/contextgate/stderr-json-record.schema.json",
+  "title": "ContextGate CLI Stderr JSON Record",
+  "description": "Machine-readable stderr record emitted by contextgate --stderr-json.",
+  "type": "object",
+  "required": ["channel", "data"],
+  "additionalProperties": false,
+  "properties": {
+    "channel": {
+      "type": "string",
+      "enum": ["update", "size", "diff"]
+    },
+    "data": {}
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "channel": { "const": "size" }
+        },
+        "required": ["channel"]
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "type": "object",
+            "required": ["hud_fields", "content_items", "transcript_items"],
+            "additionalProperties": false,
+            "properties": {
+              "hud_fields": { "type": "integer", "minimum": 0 },
+              "content_items": { "type": "integer", "minimum": 0 },
+              "transcript_items": { "type": "integer", "minimum": 0 }
+            }
+          }
+        }
+      }
+    }
+  ]
+}
