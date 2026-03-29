@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from .schemas import HudSchema, ValidationError, validate_value
+from .schemas import HudSchema, ValidationError, validate_by_spec
 
 
 def assemble_hud(
@@ -24,6 +24,6 @@ def assemble_hud(
             if on_unknown == "reject":
                 raise ValidationError(f"Unknown HUD field: {name}")
             raise ValidationError(f"Unsupported on_unknown mode: {on_unknown}")
-        normalized[name] = validate_value(spec.expected_type, value)
+        normalized[name] = validate_by_spec(spec, value)
 
     return {"mode": "replace", "fields": normalized}

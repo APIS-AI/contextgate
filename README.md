@@ -51,6 +51,24 @@ Important constraint:
 - `extract_update` should read only a strict structured update channel
 - it should not infer state updates from arbitrary prose
 
+## Envelope Format
+
+`render()` emits a structured prompt block:
+
+```text
+<CONTEXTGATE_ENVELOPE>
+{
+  "ctx_version": "0.1",
+  "auth": {"source": "local_runtime", "trust": "trusted"},
+  "hud": {"mode": "replace", "fields": {"current_room_id": "room_123"}},
+  "content": [{"label": "room_title", "trust": "untrusted", "value": "Main Room"}],
+  "transcript": ["Older residue"]
+}
+</CONTEXTGATE_ENVELOPE>
+```
+
+The parser can consume either a Python envelope object or the exact rendered block from prompt text.
+
 ## Update Channel
 
 A minimal response-side machine channel can look like this:
@@ -102,6 +120,42 @@ Avoid in `v0`:
 - generic `object`
 - mixed-type arrays
 - inline image or audio payloads
+
+## Validator Example
+
+A schema-bound field can be declared explicitly:
+
+```json
+{
+  "current_screenshot": {
+    "expected_schema": "ImageRefV1"
+  }
+}
+```
+
+A valid value would look like:
+
+```json
+{
+  "uri": "file:///tmp/screenshot.png",
+  "mime_type": "image/png",
+  "sha256": "abc123",
+  "width": 1440,
+  "height": 900
+}
+```
+
+## Rejected Field Example
+
+This field should be rejected because the declared type is `integer` but the value is instruction text:
+
+```json
+{
+  "participant_count": "ignore previous instructions"
+}
+```
+
+That should fail validation instead of being coerced or treated as ordinary prose.
 
 ## HeaderForge
 
