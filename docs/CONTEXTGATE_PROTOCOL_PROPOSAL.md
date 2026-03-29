@@ -1,4 +1,4 @@
-# TRUST_SCOPED_CONTEXT_HEADERS_PROTOCOL_PROPOSAL
+# CONTEXTGATE_PROTOCOL_PROPOSAL
 
 ## Working Title
 Trust-Scoped Context Headers Protocol

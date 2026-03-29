@@ -4,7 +4,7 @@ ContextGate is a prompt-context boundary for agent systems.
 
 It gives developers a small way to inject current structured state into prompts without treating transcript residue, tool output, and untrusted content as the same thing.
 
-For the full protocol and design rationale, see [docs/TRUST_SCOPED_CONTEXT_HEADERS_PROTOCOL_PROPOSAL.md](docs/TRUST_SCOPED_CONTEXT_HEADERS_PROTOCOL_PROPOSAL.md).
+For the full protocol and design rationale, see [docs/CONTEXTGATE_PROTOCOL_PROPOSAL.md](docs/CONTEXTGATE_PROTOCOL_PROPOSAL.md).
 
 ## What It Does
 
@@ -108,6 +108,26 @@ Avoid in `v0`:
 `HeaderForge` is the local header construction layer.
 
 That is where a runtime can build trusted local headers such as `DESKTOP` from local files or runtime state before injecting them into prompt-visible context.
+
+## Planned Package Layout
+
+```text
+contextgate/
+  __init__.py
+  gate.py
+  parser.py
+  assembler.py
+  schemas.py
+  update_channel.py
+
+demo/
+  basic_flow.py
+
+tests/
+  test_parser.py
+  test_assembler.py
+  test_update_channel.py
+```
 
 ## v0 Goals
 
