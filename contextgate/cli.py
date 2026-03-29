@@ -70,6 +70,21 @@ def build_parser() -> argparse.ArgumentParser:
         default="truncate",
         help="Behavior when transcript exceeds --transcript-limit after policy application.",
     )
+    parser.add_argument(
+        "--render",
+        action="store_true",
+        help="Print the resulting envelope as a CONTEXTGATE_ENVELOPE block instead of JSON.",
+    )
+    parser.add_argument(
+        "--base-prompt",
+        default="",
+        help="Optional prompt prefix used with --render.",
+    )
+    parser.add_argument(
+        "--report-sizes",
+        action="store_true",
+        help="Print active state sizes to stderr after successful normalization or apply.",
+    )
     return parser
 
 
@@ -110,6 +125,39 @@ def load_initial_state(path: str, gate: ContextGate) -> None:
     gate.active_transcript = list(normalized["transcript"])
 
 
+def render_envelope_block(
+    envelope: dict[str, Any], *, base_prompt: str = "", compact: bool = True
+) -> str:
+    json_kwargs = {"sort_keys": True}
+    if compact:
+        payload = json.dumps(envelope, separators=(",", ":"), **json_kwargs)
+    else:
+        payload = json.dumps(envelope, indent=2, **json_kwargs)
+    lines: list[str] = []
+    if base_prompt:
+        lines.extend([base_prompt.rstrip(), ""])
+    lines.extend(["<CONTEXTGATE_ENVELOPE>", payload, "</CONTEXTGATE_ENVELOPE>"])
+    return "\n".join(lines)
+
+
+def emit_size_report(envelope: dict[str, Any]) -> None:
+    hud = envelope.get("hud", {})
+    hud_fields = 0
+    if isinstance(hud, dict):
+        fields = hud.get("fields", {})
+        if isinstance(fields, dict):
+            hud_fields = len(fields)
+    content = envelope.get("content", [])
+    transcript = envelope.get("transcript", [])
+    print(
+        "contextgate: size "
+        f"hud_fields={hud_fields} "
+        f"content_items={len(content)} "
+        f"transcript_items={len(transcript)}",
+        file=sys.stderr,
+    )
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -141,7 +189,13 @@ def main(argv: list[str] | None = None) -> int:
         print(f"contextgate: {exc}", file=sys.stderr)
         return 1
 
-    print(json.dumps(normalized, indent=2, sort_keys=True))
+    if args.report_sizes and isinstance(normalized, dict):
+        emit_size_report(normalized)
+
+    if args.render:
+        print(render_envelope_block(normalized, base_prompt=args.base_prompt))
+    else:
+        print(json.dumps(normalized, indent=2, sort_keys=True))
     return 0
 
 

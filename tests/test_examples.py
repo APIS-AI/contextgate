@@ -76,3 +76,17 @@ def test_update_reject_mode_example_runs() -> None:
 
     assert "Rejected update:" in result.stdout
     assert "Content limit exceeded by 1 item(s)" in result.stdout
+
+
+def test_cli_apply_update_flow_example_runs() -> None:
+    result = subprocess.run(
+        [sys.executable, "examples/cli_apply_update_flow.py"],
+        cwd=REPO_ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    assert "<CONTEXTGATE_ENVELOPE>" in result.stdout
+    assert '"participant_count":5' in result.stdout
+    assert "contextgate: size" in result.stdout

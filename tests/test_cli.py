@@ -176,3 +176,63 @@ def test_cli_applies_update_with_reject_policy(tmp_path, monkeypatch, capsys) ->
     )
     err = capsys.readouterr().err
     assert "Content limit exceeded by 1 item(s)" in err
+
+
+def test_cli_applies_update_and_renders_envelope_block(tmp_path, monkeypatch, capsys) -> None:
+    state_path = tmp_path / "state.json"
+    state_path.write_text(
+        json.dumps(
+            {
+                "ctx_version": "0.1",
+                "auth": {"source": "local_runtime", "trust": "trusted"},
+                "hud": {"mode": "replace", "fields": {"participant_count": 2}},
+                "content": [],
+                "transcript": [],
+            }
+        )
+    )
+    response = """Visible text
+<CONTEXTGATE_UPDATE>{"hud":{"mode":"merge","fields":{"participant_count":5}}}</CONTEXTGATE_UPDATE>"""
+    monkeypatch.setattr("sys.stdin", StringIO(response))
+
+    assert (
+        main(
+            [
+                "--apply-update",
+                "--state",
+                str(state_path),
+                "--render",
+                "--base-prompt",
+                "Continue with the updated state.",
+            ]
+        )
+        == 0
+    )
+    out = capsys.readouterr().out
+    assert "Continue with the updated state." in out
+    assert "<CONTEXTGATE_ENVELOPE>" in out
+    assert '"participant_count":5' in out
+
+
+def test_cli_reports_sizes_for_applied_state(tmp_path, monkeypatch, capsys) -> None:
+    state_path = tmp_path / "state.json"
+    state_path.write_text(
+        json.dumps(
+            {
+                "ctx_version": "0.1",
+                "auth": {"source": "local_runtime", "trust": "trusted"},
+                "hud": {"mode": "replace", "fields": {"participant_count": 2}},
+                "content": [],
+                "transcript": ["Older residue"],
+            }
+        )
+    )
+    response = """Visible text
+<CONTEXTGATE_UPDATE>{"content":{"mode":"merge","items":[{"label":"latest_message","field_class":"message_text","trust":"untrusted","value":"Hello"}]}}</CONTEXTGATE_UPDATE>"""
+    monkeypatch.setattr("sys.stdin", StringIO(response))
+
+    assert main(["--apply-update", "--state", str(state_path), "--report-sizes"]) == 0
+    captured = capsys.readouterr()
+    assert "content_items=1" in captured.err
+    assert "transcript_items=1" in captured.err
+    assert "hud_fields=1" in captured.err

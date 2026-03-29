@@ -263,6 +263,9 @@ For a full render → extract → apply → re-render update lifecycle, see:
 For an explicit hard-fail overflow example, see:
 - `examples/update_reject_mode.py`
 
+For a file-driven CLI apply flow, see:
+- `examples/cli_apply_update_flow.py`
+
 ## CLI Helper
 
 A small CLI is included to validate and normalize envelopes from a file or stdin:
@@ -272,12 +275,15 @@ contextgate envelope.json
 cat rendered_prompt.txt | contextgate
 cat model_output.txt | contextgate --update
 cat model_output.txt | contextgate --apply-update --state state.json --content-limit 20
+cat model_output.txt | contextgate --apply-update --state state.json --render --base-prompt "Continue."
 ```
 
 The CLI can:
 - normalize full envelopes
 - extract and validate only the update channel
 - apply updates against active state with the same compaction policies as `ContextGate(...)`
+- emit the resulting state as a ready-to-forward `<CONTEXTGATE_ENVELOPE>` block
+- report active HUD/content/transcript sizes for shell-level debugging
 
 Policy flags supported by `--apply-update`:
 - `--state`
@@ -287,6 +293,9 @@ Policy flags supported by `--apply-update`:
 - `--dedupe-transcript`
 - `--content-overflow truncate|reject`
 - `--transcript-overflow truncate|reject`
+- `--render`
+- `--base-prompt`
+- `--report-sizes`
 
 Example `reject` path:
 
@@ -295,6 +304,14 @@ cat model_output.txt | contextgate --apply-update --state state.json --content-l
 ```
 
 That command fails nonzero if the merged content would exceed the configured limit.
+
+Example shell-stage flow for a CLI agent:
+
+```bash
+cat model_output.txt | contextgate --apply-update --state state.json --render --base-prompt "Continue."
+```
+
+That prints a fresh `<CONTEXTGATE_ENVELOPE>` block that can be fed directly into the next prompt assembly step.
 
 For `v0`, update-channel validation is intentionally strict:
 - only supported top-level sections are accepted
@@ -362,6 +379,7 @@ examples/
   update_payloads.py
   update_lifecycle.py
   update_reject_mode.py
+  cli_apply_update_flow.py
   rejected_malicious_update.py
 
 tests/
