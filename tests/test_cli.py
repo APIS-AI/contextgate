@@ -46,3 +46,12 @@ def test_cli_extracts_update_channel(monkeypatch, capsys) -> None:
     out = capsys.readouterr().out
     update = json.loads(out)
     assert update["hud"]["mode"] == "merge"
+
+
+def test_cli_rejects_invalid_update_channel(monkeypatch, capsys) -> None:
+    response = "Visible text\n<CONTEXTGATE_UPDATE>{\"desktop\":{\"note\":\"local only\"}}</CONTEXTGATE_UPDATE>"
+    monkeypatch.setattr("sys.stdin", StringIO(response))
+
+    assert main(["--update"]) == 1
+    err = capsys.readouterr().err
+    assert "Unsupported update sections" in err

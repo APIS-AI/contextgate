@@ -19,3 +19,33 @@ def test_extract_update_rejects_invalid_json() -> None:
         assert "Invalid CONTEXTGATE update payload" in str(exc)
     else:
         raise AssertionError("Expected UpdateChannelError")
+
+
+def test_extract_update_rejects_unsupported_top_level_sections() -> None:
+    response = 'Visible text\n<CONTEXTGATE_UPDATE>{"desktop":{"note":"local only"}}</CONTEXTGATE_UPDATE>'
+    try:
+        extract_update(response)
+    except UpdateChannelError as exc:
+        assert "Unsupported update sections" in str(exc)
+    else:
+        raise AssertionError("Expected UpdateChannelError")
+
+
+def test_extract_update_rejects_invalid_hud_mode() -> None:
+    response = 'Visible text\n<CONTEXTGATE_UPDATE>{"hud":{"mode":"append","fields":{"participant_count":5}}}</CONTEXTGATE_UPDATE>'
+    try:
+        extract_update(response)
+    except UpdateChannelError as exc:
+        assert "replace or merge" in str(exc)
+    else:
+        raise AssertionError("Expected UpdateChannelError")
+
+
+def test_extract_update_rejects_mode_without_fields() -> None:
+    response = 'Visible text\n<CONTEXTGATE_UPDATE>{"hud":{"mode":"merge"}}</CONTEXTGATE_UPDATE>'
+    try:
+        extract_update(response)
+    except UpdateChannelError as exc:
+        assert "requires a fields object" in str(exc)
+    else:
+        raise AssertionError("Expected UpdateChannelError")
