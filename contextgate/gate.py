@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from typing import Any
 
 from .assembler import assemble_hud
@@ -29,6 +30,25 @@ class ContextGate:
     def parse_envelope(self, envelope: dict[str, Any]) -> dict[str, Any]:
         return parse_envelope(envelope, default_hud_schema=self.default_hud_schema)
 
+    def build_envelope(
+        self,
+        *,
+        hud: dict[str, Any] | None = None,
+        content: list[dict[str, Any]] | None = None,
+        transcript: list[str] | None = None,
+        auth: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        return {
+            "ctx_version": "0.1",
+            "auth": {
+                "source": (auth or {}).get("source", "local_runtime"),
+                "trust": (auth or {}).get("trust", "trusted"),
+            },
+            "hud": hud,
+            "content": content or [],
+            "transcript": transcript or [],
+        }
+
     def render(
         self,
         *,
@@ -36,16 +56,23 @@ class ContextGate:
         hud: dict[str, Any] | None = None,
         content: list[dict[str, Any]] | None = None,
         transcript: list[str] | None = None,
+        auth: dict[str, Any] | None = None,
     ) -> str:
-        sections = [base_prompt.rstrip(), "", "<CONTEXTGATE>"]
-        if hud is not None:
-            sections.append(f"HUD: {hud}")
-        if content:
-            sections.append(f"CONTENT: {content}")
-        if transcript:
-            sections.append(f"TRANSCRIPT: {transcript}")
-        sections.append("</CONTEXTGATE>")
-        return "\n".join(sections)
+        envelope = self.build_envelope(
+            hud=hud,
+            content=content,
+            transcript=transcript,
+            auth=auth,
+        )
+        return "\n".join(
+            [
+                base_prompt.rstrip(),
+                "",
+                "<CONTEXTGATE_ENVELOPE>",
+                json.dumps(envelope, indent=2, sort_keys=True),
+                "</CONTEXTGATE_ENVELOPE>",
+            ]
+        )
 
     def extract_update(self, response: str) -> dict[str, Any] | None:
         return extract_update(response)
