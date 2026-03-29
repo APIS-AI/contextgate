@@ -42,10 +42,8 @@ import contextgate as cg
 
 gate = cg.ContextGate()
 
-// Construct your normal base prompt
-base_prompt = <Your normal prompt construction here>
+base_prompt = "Answer using the current runtime state."
 
-// Inject header into prompt
 prompt = gate.render(
     base_prompt=base_prompt,
     hud={"current_room_id": "room_alpha", "participant_count": 5},
@@ -59,11 +57,10 @@ prompt = gate.render(
     ],
 )
 
-// Submit your prompt normally
-response = <your normal generation code>
+response = llm.generate(prompt)  # replace with your model call
 
 update = gate.extract_update(response)
-state = gate.apply_update(update)
+gate.apply_update(update)
 visible_text = gate.visible_text(response)
 ```
 
