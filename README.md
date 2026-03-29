@@ -336,6 +336,13 @@ Policy flags supported by `--apply-update`:
 - `--stderr update-json|all`
 - `--report-diff [all|hud|content|transcript]`
 
+CLI exit codes:
+- `0` success
+- `2` CLI usage/runtime mode error
+- `3` input or parse failure
+- `4` validation failure
+- `5` policy rejection such as overflow in `reject` mode
+
 Example `reject` path:
 
 ```bash

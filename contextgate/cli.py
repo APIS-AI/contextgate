@@ -8,9 +8,15 @@ from pathlib import Path
 from typing import Any
 
 from .gate import ContextGate
-from .parser import parse_envelope
-from .schemas import parse_hud_schema
-from .update_channel import extract_update, strip_update
+from .parser import EnvelopeParseError, parse_envelope
+from .schemas import ValidationError, parse_hud_schema
+from .update_channel import UpdateChannelError, extract_update, strip_update
+
+EXIT_OK = 0
+EXIT_USAGE = 2
+EXIT_PARSE = 3
+EXIT_VALIDATION = 4
+EXIT_POLICY = 5
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -311,6 +317,29 @@ def resolve_stdout_mode(args: argparse.Namespace) -> str:
     return "json"
 
 
+def classify_exception(exc: Exception) -> int:
+    if isinstance(exc, (UpdateChannelError, ValidationError)):
+        return EXIT_VALIDATION
+    if isinstance(exc, EnvelopeParseError):
+        return EXIT_PARSE
+    if isinstance(exc, json.JSONDecodeError):
+        return EXIT_PARSE
+    if isinstance(exc, ValueError):
+        message = str(exc)
+        if "limit exceeded by" in message:
+            return EXIT_POLICY
+        if message.startswith("--"):
+            return EXIT_USAGE
+        if (
+            "Missing field path" in message
+            or "Field path" in message
+            or "Expected top-level JSON object" in message
+            or "No CONTEXTGATE update block found" in message
+        ):
+            return EXIT_PARSE
+    return 1
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -327,7 +356,7 @@ def main(argv: list[str] | None = None) -> int:
             raw_text = read_string_field(payload, args.read_update_from_field)
         except Exception as exc:
             print(f"contextgate: {exc}", file=sys.stderr)
-            return 1
+            return classify_exception(exc)
 
     try:
         if args.apply_update:
@@ -356,12 +385,12 @@ def main(argv: list[str] | None = None) -> int:
             normalized = parse_envelope(payload, default_hud_schema=default_schema)
     except Exception as exc:
         print(f"contextgate: {exc}", file=sys.stderr)
-        return 1
+        return classify_exception(exc)
 
     if args.stderr in {"update-json", "all"}:
         if extracted_update is None:
             print("contextgate: --stderr requires --update or --apply-update", file=sys.stderr)
-            return 1
+            return EXIT_USAGE
         emit_update_json(extracted_update)
 
     if (args.report_sizes or args.stderr == "all") and isinstance(normalized, dict):
@@ -370,7 +399,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.report_diff:
         if state_diff is None:
             print("contextgate: --report-diff requires --apply-update", file=sys.stderr)
-            return 1
+            return EXIT_USAGE
         emit_diff_json(select_diff_scope(state_diff, args.report_diff))
 
     if args.write_state and isinstance(normalized, dict):
@@ -380,19 +409,19 @@ def main(argv: list[str] | None = None) -> int:
     if stdout_mode == "visible-text":
         if visible_text is None:
             print("contextgate: --stdout visible-text requires --update or --apply-update", file=sys.stderr)
-            return 1
+            return EXIT_USAGE
         print(visible_text)
     elif stdout_mode == "render":
         if not isinstance(normalized, dict) or "ctx_version" not in normalized:
             print("contextgate: render output requires a normalized envelope", file=sys.stderr)
-            return 1
+            return EXIT_USAGE
         print(render_envelope_block(normalized, base_prompt=args.base_prompt))
     else:
         if args.compact_json:
             print(json.dumps(normalized, separators=(",", ":"), sort_keys=True))
         else:
             print(json.dumps(normalized, indent=2, sort_keys=True))
-    return 0
+    return EXIT_OK
 
 
 if __name__ == "__main__":

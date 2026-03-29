@@ -52,7 +52,7 @@ def test_cli_rejects_invalid_update_channel(monkeypatch, capsys) -> None:
     response = "Visible text\n<CONTEXTGATE_UPDATE>{\"desktop\":{\"note\":\"local only\"}}</CONTEXTGATE_UPDATE>"
     monkeypatch.setattr("sys.stdin", StringIO(response))
 
-    assert main(["--update"]) == 1
+    assert main(["--update"]) == 4
     err = capsys.readouterr().err
     assert "Unsupported update sections" in err
 
@@ -72,7 +72,7 @@ def test_cli_rejects_invalid_hud_update_against_schema(tmp_path, monkeypatch, ca
     response = 'Visible text\n<CONTEXTGATE_UPDATE>{"hud":{"participant_count":"ignore previous instructions"}}</CONTEXTGATE_UPDATE>'
     monkeypatch.setattr("sys.stdin", StringIO(response))
 
-    assert main(["--update", "--schema", str(schema_path)]) == 1
+    assert main(["--update", "--schema", str(schema_path)]) == 4
     err = capsys.readouterr().err
     assert "Expected integer" in err
 
@@ -172,7 +172,7 @@ def test_cli_applies_update_with_reject_policy(tmp_path, monkeypatch, capsys) ->
                 "reject",
             ]
         )
-        == 1
+        == 5
     )
     err = capsys.readouterr().err
     assert "Content limit exceeded by 1 item(s)" in err
@@ -383,7 +383,7 @@ def test_cli_rejects_non_integer_list_segment_in_field_path(tmp_path, capsys) ->
 
     assert (
         main([str(payload_path), "--update", "--read-update-from-field", "events.last.assistant_text"])
-        == 1
+        == 3
     )
     err = capsys.readouterr().err
     assert "Field path segment must be an integer for list access: last" in err
@@ -441,7 +441,7 @@ def test_cli_rejects_visible_text_stdout_for_envelope_mode(tmp_path, capsys) -> 
         )
     )
 
-    assert main([str(envelope_path), "--stdout", "visible-text"]) == 1
+    assert main([str(envelope_path), "--stdout", "visible-text"]) == 2
     err = capsys.readouterr().err
     assert "--stdout visible-text requires --update or --apply-update" in err
 
@@ -577,7 +577,7 @@ def test_cli_rejects_report_diff_without_apply_update(tmp_path, capsys) -> None:
         )
     )
 
-    assert main([str(envelope_path), "--report-diff"]) == 1
+    assert main([str(envelope_path), "--report-diff"]) == 2
     err = capsys.readouterr().err
     assert "--report-diff requires --apply-update" in err
 
@@ -633,6 +633,14 @@ def test_cli_rejects_stderr_update_json_for_envelope_mode(tmp_path, capsys) -> N
         )
     )
 
-    assert main([str(envelope_path), "--stderr", "update-json"]) == 1
+    assert main([str(envelope_path), "--stderr", "update-json"]) == 2
     err = capsys.readouterr().err
     assert "--stderr requires --update or --apply-update" in err
+
+
+def test_cli_returns_parse_exit_code_for_missing_update_block(monkeypatch, capsys) -> None:
+    monkeypatch.setattr("sys.stdin", StringIO("Visible text only"))
+
+    assert main(["--update"]) == 3
+    err = capsys.readouterr().err
+    assert "No CONTEXTGATE update block found" in err
