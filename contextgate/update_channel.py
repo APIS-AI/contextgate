@@ -5,6 +5,7 @@ import re
 from typing import Any
 
 from .assembler import assemble_hud
+from .content_validation import normalize_content_items
 from .schemas import HudSchema, ValidationError
 
 UPDATE_BLOCK_RE = re.compile(
@@ -57,39 +58,6 @@ def _validate_hud_update(
         raise UpdateChannelError(str(exc)) from exc
 
 
-def _normalize_content_items(payload: Any) -> list[dict[str, str]]:
-    if not isinstance(payload, list):
-        raise UpdateChannelError("Content update payload must be a list")
-
-    normalized: list[dict[str, str]] = []
-    for item in payload:
-        if not isinstance(item, dict):
-            raise UpdateChannelError("Content items must be objects")
-        extra_keys = set(item) - {"label", "field_class", "trust", "value"}
-        if extra_keys:
-            names = ", ".join(sorted(extra_keys))
-            raise UpdateChannelError(f"Unsupported content item keys: {names}")
-
-        label = item.get("label", "content")
-        field_class = item.get("field_class", "display_text")
-        trust = item.get("trust", "untrusted")
-        value = item.get("value", "")
-        if not all(isinstance(field, str) for field in (label, field_class, trust, value)):
-            raise UpdateChannelError("Content item fields must be strings")
-        if trust not in {"trusted", "untrusted"}:
-            raise UpdateChannelError("Content item trust must be trusted or untrusted")
-
-        normalized.append(
-            {
-                "label": label,
-                "field_class": field_class,
-                "trust": trust,
-                "value": value,
-            }
-        )
-    return normalized
-
-
 def _validate_content_update(payload: Any) -> dict[str, Any] | list[dict[str, str]]:
     if isinstance(payload, dict):
         mode = payload.get("mode", "replace")
@@ -102,9 +70,9 @@ def _validate_content_update(payload: Any) -> dict[str, Any] | list[dict[str, st
         if extra_keys:
             names = ", ".join(sorted(extra_keys))
             raise UpdateChannelError(f"Unsupported content update keys: {names}")
-        return {"mode": mode, "items": _normalize_content_items(items)}
+        return {"mode": mode, "items": normalize_content_items(items, error_cls=UpdateChannelError)}
 
-    return _normalize_content_items(payload)
+    return normalize_content_items(payload, error_cls=UpdateChannelError)
 
 
 def _normalize_transcript_items(payload: Any) -> list[str]:

@@ -5,6 +5,7 @@ import re
 from typing import Any
 
 from .assembler import assemble_hud
+from .content_validation import normalize_content_items
 from .schemas import HudSchema, ValidationError, parse_hud_schema
 
 ENVELOPE_BLOCK_RE = re.compile(
@@ -48,15 +49,10 @@ def parse_envelope(
         "transcript": list(envelope.get("transcript") or []),
     }
 
-    for item in envelope.get("content") or []:
-        parsed["content"].append(
-            {
-                "label": item.get("label", "content"),
-                "field_class": item.get("field_class", "display_text"),
-                "trust": item.get("trust", "untrusted"),
-                "value": item.get("value", ""),
-            }
-        )
+    try:
+        parsed["content"] = normalize_content_items(envelope.get("content") or [])
+    except ValidationError as exc:
+        raise EnvelopeParseError(str(exc)) from exc
 
     return parsed
 

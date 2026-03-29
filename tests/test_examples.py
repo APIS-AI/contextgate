@@ -48,3 +48,18 @@ def test_update_payloads_example_runs() -> None:
     assert "accepted_content_merge: accepted" in result.stdout
     assert "accepted_transcript_merge: accepted" in result.stdout
     assert "rejected_local_desktop: rejected" in result.stdout
+
+
+def test_update_lifecycle_example_runs() -> None:
+    result = subprocess.run(
+        [sys.executable, "examples/update_lifecycle.py"],
+        cwd=REPO_ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    assert "INITIAL" in result.stdout
+    assert "VISIBLE RESPONSE" in result.stdout
+    assert "RERENDERED" in result.stdout
+    assert "Hello from the room" in result.stdout

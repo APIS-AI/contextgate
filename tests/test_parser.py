@@ -62,3 +62,43 @@ def test_extract_envelope_rejects_missing_block() -> None:
         assert "No CONTEXTGATE envelope block found" in str(exc)
     else:
         raise AssertionError("Expected EnvelopeParseError")
+
+
+def test_parse_envelope_rejects_invalid_content_trust() -> None:
+    try:
+        parse_envelope(
+            {
+                "content": [
+                    {
+                        "label": "room_title",
+                        "field_class": "display_text",
+                        "trust": "peer",
+                        "value": "Main Room",
+                    }
+                ]
+            }
+        )
+    except EnvelopeParseError as exc:
+        assert "trust must be trusted or untrusted" in str(exc)
+    else:
+        raise AssertionError("Expected EnvelopeParseError")
+
+
+def test_parse_envelope_rejects_invalid_field_class() -> None:
+    try:
+        parse_envelope(
+            {
+                "content": [
+                    {
+                        "label": "room_title",
+                        "field_class": "freeform_blob",
+                        "trust": "untrusted",
+                        "value": "Main Room",
+                    }
+                ]
+            }
+        )
+    except EnvelopeParseError as exc:
+        assert "field_class must be one of" in str(exc)
+    else:
+        raise AssertionError("Expected EnvelopeParseError")

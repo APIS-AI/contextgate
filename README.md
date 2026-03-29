@@ -117,6 +117,12 @@ Supported `v0` update sections:
 - legacy replace syntax via a direct list
 - explicit mode syntax via `{ "mode": "replace" | "merge", "items": [...] }`
 
+Allowed `field_class` values for content items:
+- `display_text`
+- `message_text`
+- `status_text`
+- `label_text`
+
 ## HUD Schema Handshake
 
 `ContextGate` can accept a minimal declarative handshake for HUD fields:
@@ -225,6 +231,9 @@ For a full prompt assembly example combining trusted `DESKTOP`, trusted `HUD`, a
 For a compact accepted/rejected update payload tour, see:
 - `examples/update_payloads.py`
 
+For a full render → extract → apply → re-render update lifecycle, see:
+- `examples/update_lifecycle.py`
+
 ## CLI Helper
 
 A small CLI is included to validate and normalize envelopes from a file or stdin:
@@ -303,6 +312,7 @@ examples/
   headerforge_desktop_from_files.py
   end_to_end_prompt_assembly.py
   update_payloads.py
+  update_lifecycle.py
   rejected_malicious_update.py
 
 tests/
