@@ -1,6 +1,6 @@
 # ContextGate
 
-ContextGate is a dynamic HUD-style context header for agents.
+ContextGate is a HUD-style dynamic context header for agents.
 
 It makes agents aware of trusted local state and untrusted remote data without inflating context, because the live header is replaced each turn instead of endlessly appended through transcript history.
 
