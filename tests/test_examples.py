@@ -225,6 +225,23 @@ def test_cli_openai_chat_wrapper_pipeline_example_runs() -> None:
     assert '"participant_count":5' in result.stdout
 
 
+def test_cli_anthropic_messages_wrapper_pipeline_example_runs() -> None:
+    result = subprocess.run(
+        ["bash", "examples/cli_anthropic_messages_wrapper_pipeline.sh"],
+        cwd=REPO_ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    assert "VISIBLE TEXT" in result.stdout
+    assert "Summary: Room updated." in result.stdout
+    assert "STDERR CHANNEL" in result.stdout
+    assert "contextgate: update-json" in result.stdout
+    assert "UPDATED STATE" in result.stdout
+    assert '"participant_count":5' in result.stdout
+
+
 def test_cli_hud_diff_example_runs() -> None:
     result = subprocess.run(
         ["bash", "examples/cli_hud_diff.sh"],
@@ -274,3 +291,22 @@ def test_cli_combined_diagnostics_example_runs() -> None:
     assert 'contextgate: diff-json {"transcript"' in result.stdout
     assert "FAILURE EXIT 3" in result.stdout
     assert '"category":"parse"' in result.stdout
+
+
+def test_cli_shell_lib_demo_example_runs() -> None:
+    result = subprocess.run(
+        ["bash", "examples/cli_shell_lib_demo.sh"],
+        cwd=REPO_ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    assert "VISIBLE TEXT" in result.stdout
+    assert "UPDATE CHANNEL" in result.stdout
+    assert '"participant_count":5' in result.stdout
+    assert "SIZE CHANNEL" in result.stdout
+    assert '"transcript_items":1' in result.stdout
+    assert "DIFF CHANNEL" in result.stdout
+    assert "FAILURE EXIT 2" in result.stdout
+    assert "FAILURE CATEGORY usage" in result.stdout

@@ -290,12 +290,19 @@ For a provider-wrapper event log pipeline, see:
 For an OpenAI-style chat wrapper pipeline, see:
 - `examples/cli_openai_chat_wrapper_pipeline.sh`
 
+For an Anthropic-style messages wrapper pipeline, see:
+- `examples/cli_anthropic_messages_wrapper_pipeline.sh`
+
 For scoped diff shell examples, see:
 - `examples/cli_hud_diff.sh`
 - `examples/cli_transcript_diff.sh`
 
 For a combined diagnostics loop showing success and failure handling, see:
 - `examples/cli_combined_diagnostics.sh`
+
+For a reusable shell helper and demo loop, see:
+- `examples/contextgate_shell_lib.sh`
+- `examples/cli_shell_lib_demo.sh`
 
 For a minimal copyable event shape, see:
 - `examples/event_log_shape.json`
@@ -322,6 +329,7 @@ cat model_output.txt | contextgate --apply-update --state state.json --render --
 cat model_output.txt | contextgate --apply-update --state state.json --write-state state.json --compact-json
 contextgate event.json --update --read-update-from-field event.assistant_text
 cat model_output.txt | contextgate --apply-update --state state.json --write-state state.json --stdout visible-text --stderr update-json
+cat model_output.txt | contextgate --apply-update --state state.json --stdout visible-text --stderr diff --report-diff transcript
 cat model_output.txt | contextgate --apply-update --state state.json --stdout visible-text --stderr all --report-diff
 cat model_output.txt | contextgate --apply-update --state state.json --stdout visible-text --report-diff hud
 cat model_output.txt | contextgate --update --json-errors
@@ -340,6 +348,7 @@ The CLI can:
 - read model output text from nested lists inside a JSON log object using numeric path segments
 - print only visible response text while machine state is persisted elsewhere
 - emit validated update JSON to stderr for side-channel machine inspection
+- emit text stderr diagnostics for update, size, and diff channels with the same selection model as JSON diagnostics
 - emit machine-readable stderr JSON records for update, size, and diff channels
 - emit a structured before/after diff for applied state changes
 - emit machine-readable JSON error objects to stderr
@@ -359,7 +368,7 @@ Policy flags supported by `--apply-update`:
 - `--compact-json`
 - `--read-update-from-field`
 - `--stdout json|render|visible-text`
-- `--stderr update-json|all`
+- `--stderr update|update-json|size|diff|all`
 - `--stderr-json update|size|diff|all`
 - `--report-diff [all|hud|content|transcript]`
 - `--json-errors`
@@ -438,6 +447,14 @@ contextgate examples/openai_chat_completions_wrapper.json --apply-update --state
 
 That shows the same extraction path against a chat-completions-style wrapper where assistant text lives under `choices.0.message.content`.
 
+Example Anthropic-style messages wrapper flow for a CLI agent:
+
+```bash
+contextgate examples/anthropic_messages_wrapper.json --apply-update --state state.json --read-update-from-field content.0.text
+```
+
+That shows the same extraction path against a messages-style wrapper where assistant text lives under `content.0.text`.
+
 List segments in `--read-update-from-field` may be numeric indexes, including negative indexes for tail selection:
 
 ```bash
@@ -470,6 +487,14 @@ cat model_output.txt | contextgate --apply-update --state state.json --stdout vi
 
 That emits visible assistant text to stdout while sending validated update JSON, size data, and a structured before/after diff to stderr.
 
+Example text diff-only flow for a CLI agent:
+
+```bash
+cat model_output.txt | contextgate --apply-update --state state.json --stdout visible-text --stderr diff --report-diff transcript
+```
+
+That emits only transcript diff diagnostics to stderr in text form.
+
 Example scoped diff flow for a CLI agent:
 
 ```bash
@@ -484,6 +509,10 @@ For runnable scoped diff examples, see:
 
 For a combined success/failure diagnostics example, see:
 - `examples/cli_combined_diagnostics.sh`
+
+For a reusable shell helper that normalizes `--stderr-json all` handling and exit-code branching, see:
+- `examples/contextgate_shell_lib.sh`
+- `examples/cli_shell_lib_demo.sh`
 
 For `v0`, update-channel validation is intentionally strict:
 - only supported top-level sections are accepted

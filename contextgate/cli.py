@@ -119,8 +119,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--stderr",
-        choices=("update-json", "all"),
-        help="Optional stderr channel for validated machine update data. 'all' also includes size reporting.",
+        choices=("update", "update-json", "size", "diff", "all"),
+        help="Optional stderr diagnostic channel. 'all' emits update, size, and diff in text form.",
     )
     parser.add_argument(
         "--stderr-json",
@@ -258,6 +258,24 @@ def emit_update_json(update: dict[str, Any]) -> None:
         + json.dumps(update, separators=(",", ":"), sort_keys=True),
         file=sys.stderr,
     )
+
+
+def resolve_text_stderr_channels(args: argparse.Namespace) -> list[str]:
+    if not args.stderr:
+        return ["diff"] if args.report_diff else []
+
+    if args.stderr in {"update", "update-json"}:
+        channels = ["update"]
+    elif args.stderr == "size":
+        channels = ["size"]
+    elif args.stderr == "diff":
+        channels = ["diff"]
+    else:
+        channels = ["update", "size", "diff"]
+
+    if args.report_diff and "diff" not in channels:
+        channels.append("diff")
+    return channels
 
 
 def canonical_item(value: Any) -> str:
@@ -448,6 +466,16 @@ def main(argv: list[str] | None = None) -> int:
         emit_error(str(exc), exit_code=exit_code, as_json=args.json_errors)
         return exit_code
 
+    diff_scope = args.report_diff or "all"
+    text_stderr_channels = resolve_text_stderr_channels(args)
+    if (
+        not args.stderr
+        and args.report_diff
+        and args.stderr_json in {"diff", "all"}
+        and "diff" in text_stderr_channels
+    ):
+        text_stderr_channels.remove("diff")
+
     if args.stderr_json:
         if args.stderr_json == "update":
             if extracted_update is None:
@@ -475,7 +503,7 @@ def main(argv: list[str] | None = None) -> int:
                     as_json=args.json_errors,
                 )
                 return EXIT_USAGE
-            emit_stderr_json_record("diff", state_diff)
+            emit_stderr_json_record("diff", select_diff_scope(state_diff, diff_scope))
         else:
             if extracted_update is None or state_diff is None:
                 emit_error(
@@ -486,9 +514,9 @@ def main(argv: list[str] | None = None) -> int:
                 return EXIT_USAGE
             emit_stderr_json_record("update", extracted_update)
             emit_stderr_json_record("size", build_size_info(normalized))
-            emit_stderr_json_record("diff", state_diff)
+            emit_stderr_json_record("diff", select_diff_scope(state_diff, diff_scope))
 
-    if args.stderr in {"update-json", "all"}:
+    if "update" in text_stderr_channels:
         if extracted_update is None:
             emit_error(
                 "--stderr requires --update or --apply-update",
@@ -498,10 +526,12 @@ def main(argv: list[str] | None = None) -> int:
             return EXIT_USAGE
         emit_update_json(extracted_update)
 
-    if (args.report_sizes or args.stderr == "all") and isinstance(normalized, dict):
+    if ("size" in text_stderr_channels or args.report_sizes) and isinstance(
+        normalized, dict
+    ):
         emit_size_report(normalized)
 
-    if args.report_diff:
+    if "diff" in text_stderr_channels:
         if state_diff is None:
             emit_error(
                 "--report-diff requires --apply-update",
@@ -509,7 +539,7 @@ def main(argv: list[str] | None = None) -> int:
                 as_json=args.json_errors,
             )
             return EXIT_USAGE
-        emit_diff_json(select_diff_scope(state_diff, args.report_diff))
+        emit_diff_json(select_diff_scope(state_diff, diff_scope))
 
     if args.write_state and isinstance(normalized, dict):
         write_state(args.write_state, normalized)

@@ -628,6 +628,65 @@ def test_cli_stderr_all_includes_update_and_sizes(tmp_path, monkeypatch, capsys)
     assert "Summary: Room updated." in captured.out
     assert 'contextgate: update-json {"hud":{"fields":{"participant_count":5},"mode":"merge"}}' in captured.err
     assert "contextgate: size hud_fields=1 content_items=0 transcript_items=0" in captured.err
+    assert 'contextgate: diff-json {"content":{"added":[],"removed":[]}' in captured.err
+
+
+def test_cli_emits_text_size_channel_without_update(tmp_path, capsys) -> None:
+    envelope_path = tmp_path / "envelope.json"
+    envelope_path.write_text(
+        json.dumps(
+            {
+                "ctx_version": "0.1",
+                "auth": {"source": "local_runtime", "trust": "trusted"},
+                "hud": {"mode": "replace", "fields": {"participant_count": 2}},
+                "content": [],
+                "transcript": [],
+            }
+        )
+    )
+
+    assert main([str(envelope_path), "--stderr", "size"]) == 0
+    captured = capsys.readouterr()
+    assert "contextgate: size hud_fields=1 content_items=0 transcript_items=0" in captured.err
+
+
+def test_cli_emits_text_diff_channel_with_scope(tmp_path, monkeypatch, capsys) -> None:
+    state_path = tmp_path / "state.json"
+    state_path.write_text(
+        json.dumps(
+            {
+                "ctx_version": "0.1",
+                "auth": {"source": "local_runtime", "trust": "trusted"},
+                "hud": {"mode": "replace", "fields": {"participant_count": 2}},
+                "content": [],
+                "transcript": ["Older residue"],
+            }
+        )
+    )
+    response = """Summary: Transcript updated.
+<CONTEXTGATE_UPDATE>{"transcript":{"mode":"merge","items":["Newest residue"]}}</CONTEXTGATE_UPDATE>"""
+    monkeypatch.setattr("sys.stdin", StringIO(response))
+
+    assert (
+        main(
+            [
+                "--apply-update",
+                "--state",
+                str(state_path),
+                "--stdout",
+                "visible-text",
+                "--stderr",
+                "diff",
+                "--report-diff",
+                "transcript",
+            ]
+        )
+        == 0
+    )
+    captured = capsys.readouterr()
+    assert 'contextgate: diff-json {"transcript":{"added":["Newest residue"],"removed":[]}}' in captured.err
+    assert '"hud"' not in captured.err
+    assert '"content"' not in captured.err
 
 
 def test_cli_rejects_stderr_update_json_for_envelope_mode(tmp_path, capsys) -> None:
@@ -647,6 +706,25 @@ def test_cli_rejects_stderr_update_json_for_envelope_mode(tmp_path, capsys) -> N
     assert main([str(envelope_path), "--stderr", "update-json"]) == 2
     err = capsys.readouterr().err
     assert "--stderr requires --update or --apply-update" in err
+
+
+def test_cli_rejects_text_diff_channel_without_apply_update(tmp_path, capsys) -> None:
+    envelope_path = tmp_path / "envelope.json"
+    envelope_path.write_text(
+        json.dumps(
+            {
+                "ctx_version": "0.1",
+                "auth": {"source": "local_runtime", "trust": "trusted"},
+                "hud": {"mode": "replace", "fields": {"participant_count": 2}},
+                "content": [],
+                "transcript": [],
+            }
+        )
+    )
+
+    assert main([str(envelope_path), "--stderr", "diff"]) == 2
+    err = capsys.readouterr().err
+    assert "--report-diff requires --apply-update" in err
 
 
 def test_cli_returns_parse_exit_code_for_missing_update_block(monkeypatch, capsys) -> None:
@@ -728,6 +806,43 @@ def test_cli_emits_stderr_json_all_records_for_apply(tmp_path, monkeypatch, caps
         "after": 5,
         "before": 2,
     }
+
+
+def test_cli_emits_stderr_json_diff_record_with_scope(tmp_path, monkeypatch, capsys) -> None:
+    state_path = tmp_path / "state.json"
+    state_path.write_text(
+        json.dumps(
+            {
+                "ctx_version": "0.1",
+                "auth": {"source": "local_runtime", "trust": "trusted"},
+                "hud": {"mode": "replace", "fields": {"participant_count": 2}},
+                "content": [],
+                "transcript": ["Older residue"],
+            }
+        )
+    )
+    response = """Summary: Transcript updated.
+<CONTEXTGATE_UPDATE>{"transcript":{"mode":"merge","items":["Newest residue"]},"hud":{"mode":"merge","fields":{"participant_count":5}}}</CONTEXTGATE_UPDATE>"""
+    monkeypatch.setattr("sys.stdin", StringIO(response))
+
+    assert (
+        main(
+            [
+                "--apply-update",
+                "--state",
+                str(state_path),
+                "--stderr-json",
+                "diff",
+                "--report-diff",
+                "transcript",
+            ]
+        )
+        == 0
+    )
+    captured = capsys.readouterr()
+    record = json.loads(captured.err)
+    assert record["channel"] == "diff"
+    assert record["data"] == {"transcript": {"added": ["Newest residue"], "removed": []}}
 
 
 def test_cli_rejects_stderr_json_diff_without_apply(tmp_path, capsys) -> None:

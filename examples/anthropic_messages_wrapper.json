@@ -1,0 +1,13 @@
+{
+  "id": "msg_01_demo",
+  "type": "message",
+  "role": "assistant",
+  "model": "claude-demo",
+  "content": [
+    {
+      "type": "text",
+      "text": "Summary: Room updated.\n<CONTEXTGATE_UPDATE>{\"hud\":{\"mode\":\"merge\",\"fields\":{\"participant_count\":5}}}</CONTEXTGATE_UPDATE>"
+    }
+  ],
+  "stop_reason": "end_turn"
+}
