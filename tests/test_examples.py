@@ -189,3 +189,52 @@ def test_cli_exit_code_branching_example_runs() -> None:
     assert "No CONTEXTGATE update block found" in result.stdout
     assert "Unsupported update sections" in result.stdout
     assert "Content limit exceeded by 1 item(s)" in result.stdout
+
+
+def test_cli_provider_wrapper_pipeline_example_runs() -> None:
+    result = subprocess.run(
+        ["bash", "examples/cli_provider_wrapper_pipeline.sh"],
+        cwd=REPO_ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    assert "VISIBLE TEXT" in result.stdout
+    assert "Summary: Room updated." in result.stdout
+    assert "STDERR CHANNEL" in result.stdout
+    assert "contextgate: update-json" in result.stdout
+    assert "UPDATED STATE" in result.stdout
+    assert '"participant_count":5' in result.stdout
+
+
+def test_cli_hud_diff_example_runs() -> None:
+    result = subprocess.run(
+        ["bash", "examples/cli_hud_diff.sh"],
+        cwd=REPO_ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    assert "HUD DIFF" in result.stdout
+    assert "contextgate: diff-json" in result.stdout
+    assert '"hud"' in result.stdout
+    assert '"content"' not in result.stdout
+    assert '"transcript"' not in result.stdout
+
+
+def test_cli_transcript_diff_example_runs() -> None:
+    result = subprocess.run(
+        ["bash", "examples/cli_transcript_diff.sh"],
+        cwd=REPO_ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    assert "TRANSCRIPT DIFF" in result.stdout
+    assert "contextgate: diff-json" in result.stdout
+    assert '"transcript"' in result.stdout
+    assert '"hud"' not in result.stdout
+    assert '"content"' not in result.stdout

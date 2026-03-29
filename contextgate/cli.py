@@ -122,6 +122,11 @@ def build_parser() -> argparse.ArgumentParser:
         choices=("update-json", "all"),
         help="Optional stderr channel for validated machine update data. 'all' also includes size reporting.",
     )
+    parser.add_argument(
+        "--json-errors",
+        action="store_true",
+        help="Emit machine-readable JSON errors to stderr instead of plain text.",
+    )
     return parser
 
 
@@ -317,6 +322,15 @@ def resolve_stdout_mode(args: argparse.Namespace) -> str:
     return "json"
 
 
+def category_for_exit_code(exit_code: int) -> str:
+    return {
+        EXIT_USAGE: "usage",
+        EXIT_PARSE: "parse",
+        EXIT_VALIDATION: "validation",
+        EXIT_POLICY: "policy",
+    }.get(exit_code, "error")
+
+
 def classify_exception(exc: Exception) -> int:
     if isinstance(exc, (UpdateChannelError, ValidationError)):
         return EXIT_VALIDATION
@@ -340,6 +354,26 @@ def classify_exception(exc: Exception) -> int:
     return 1
 
 
+def emit_error(message: str, *, exit_code: int, as_json: bool) -> None:
+    if as_json:
+        print(
+            json.dumps(
+                {
+                    "error": {
+                        "category": category_for_exit_code(exit_code),
+                        "exit_code": exit_code,
+                        "message": message,
+                    }
+                },
+                separators=(",", ":"),
+                sort_keys=True,
+            ),
+            file=sys.stderr,
+        )
+        return
+    print(f"contextgate: {message}", file=sys.stderr)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -355,8 +389,9 @@ def main(argv: list[str] | None = None) -> int:
             payload = load_json_payload(raw_text)
             raw_text = read_string_field(payload, args.read_update_from_field)
         except Exception as exc:
-            print(f"contextgate: {exc}", file=sys.stderr)
-            return classify_exception(exc)
+            exit_code = classify_exception(exc)
+            emit_error(str(exc), exit_code=exit_code, as_json=args.json_errors)
+            return exit_code
 
     try:
         if args.apply_update:
@@ -384,12 +419,17 @@ def main(argv: list[str] | None = None) -> int:
                 payload = raw_text
             normalized = parse_envelope(payload, default_hud_schema=default_schema)
     except Exception as exc:
-        print(f"contextgate: {exc}", file=sys.stderr)
-        return classify_exception(exc)
+        exit_code = classify_exception(exc)
+        emit_error(str(exc), exit_code=exit_code, as_json=args.json_errors)
+        return exit_code
 
     if args.stderr in {"update-json", "all"}:
         if extracted_update is None:
-            print("contextgate: --stderr requires --update or --apply-update", file=sys.stderr)
+            emit_error(
+                "--stderr requires --update or --apply-update",
+                exit_code=EXIT_USAGE,
+                as_json=args.json_errors,
+            )
             return EXIT_USAGE
         emit_update_json(extracted_update)
 
@@ -398,7 +438,11 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.report_diff:
         if state_diff is None:
-            print("contextgate: --report-diff requires --apply-update", file=sys.stderr)
+            emit_error(
+                "--report-diff requires --apply-update",
+                exit_code=EXIT_USAGE,
+                as_json=args.json_errors,
+            )
             return EXIT_USAGE
         emit_diff_json(select_diff_scope(state_diff, args.report_diff))
 
@@ -408,12 +452,20 @@ def main(argv: list[str] | None = None) -> int:
     stdout_mode = resolve_stdout_mode(args)
     if stdout_mode == "visible-text":
         if visible_text is None:
-            print("contextgate: --stdout visible-text requires --update or --apply-update", file=sys.stderr)
+            emit_error(
+                "--stdout visible-text requires --update or --apply-update",
+                exit_code=EXIT_USAGE,
+                as_json=args.json_errors,
+            )
             return EXIT_USAGE
         print(visible_text)
     elif stdout_mode == "render":
         if not isinstance(normalized, dict) or "ctx_version" not in normalized:
-            print("contextgate: render output requires a normalized envelope", file=sys.stderr)
+            emit_error(
+                "render output requires a normalized envelope",
+                exit_code=EXIT_USAGE,
+                as_json=args.json_errors,
+            )
             return EXIT_USAGE
         print(render_envelope_block(normalized, base_prompt=args.base_prompt))
     else:

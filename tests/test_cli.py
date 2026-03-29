@@ -57,6 +57,17 @@ def test_cli_rejects_invalid_update_channel(monkeypatch, capsys) -> None:
     assert "Unsupported update sections" in err
 
 
+def test_cli_emits_json_error_for_validation_failure(monkeypatch, capsys) -> None:
+    response = "Visible text\n<CONTEXTGATE_UPDATE>{\"desktop\":{\"note\":\"local only\"}}</CONTEXTGATE_UPDATE>"
+    monkeypatch.setattr("sys.stdin", StringIO(response))
+
+    assert main(["--update", "--json-errors"]) == 4
+    err = json.loads(capsys.readouterr().err)
+    assert err["error"]["category"] == "validation"
+    assert err["error"]["exit_code"] == 4
+    assert "Unsupported update sections" in err["error"]["message"]
+
+
 def test_cli_rejects_invalid_hud_update_against_schema(tmp_path, monkeypatch, capsys) -> None:
     schema_path = tmp_path / "schema.json"
     schema_path.write_text(
@@ -644,3 +655,24 @@ def test_cli_returns_parse_exit_code_for_missing_update_block(monkeypatch, capsy
     assert main(["--update"]) == 3
     err = capsys.readouterr().err
     assert "No CONTEXTGATE update block found" in err
+
+
+def test_cli_emits_json_error_for_usage_failure(tmp_path, capsys) -> None:
+    envelope_path = tmp_path / "envelope.json"
+    envelope_path.write_text(
+        json.dumps(
+            {
+                "ctx_version": "0.1",
+                "auth": {"source": "local_runtime", "trust": "trusted"},
+                "hud": {"mode": "replace", "fields": {"participant_count": 2}},
+                "content": [],
+                "transcript": [],
+            }
+        )
+    )
+
+    assert main([str(envelope_path), "--stdout", "visible-text", "--json-errors"]) == 2
+    err = json.loads(capsys.readouterr().err)
+    assert err["error"]["category"] == "usage"
+    assert err["error"]["exit_code"] == 2
+    assert "--stdout visible-text requires --update or --apply-update" in err["error"]["message"]
