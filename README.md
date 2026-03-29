@@ -281,6 +281,9 @@ For an event-array pipeline using list-index field paths, see:
 For a full stderr side-channel pipeline with update, size, and diff output, see:
 - `examples/cli_stderr_all_pipeline.sh`
 
+For a shell example that branches on CLI exit codes, see:
+- `examples/cli_exit_code_branching.sh`
+
 For a minimal copyable event shape, see:
 - `examples/event_log_shape.json`
 
@@ -342,6 +345,9 @@ CLI exit codes:
 - `3` input or parse failure
 - `4` validation failure
 - `5` policy rejection such as overflow in `reject` mode
+
+For a shell branching example covering `3`, `4`, and `5`, see:
+- `examples/cli_exit_code_branching.sh`
 
 Example `reject` path:
 

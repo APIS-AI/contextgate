@@ -172,3 +172,20 @@ def test_cli_stderr_all_pipeline_example_runs() -> None:
     assert "contextgate: diff-json" in result.stdout
     assert "UPDATED STATE" in result.stdout
     assert '"participant_count":5' in result.stdout
+
+
+def test_cli_exit_code_branching_example_runs() -> None:
+    result = subprocess.run(
+        ["bash", "examples/cli_exit_code_branching.sh"],
+        cwd=REPO_ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    assert "PARSE_EXIT 3" in result.stdout
+    assert "VALIDATION_EXIT 4" in result.stdout
+    assert "POLICY_EXIT 5" in result.stdout
+    assert "No CONTEXTGATE update block found" in result.stdout
+    assert "Unsupported update sections" in result.stdout
+    assert "Content limit exceeded by 1 item(s)" in result.stdout
