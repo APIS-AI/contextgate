@@ -43,7 +43,7 @@ import contextgate as cg
 gate = cg.ContextGate()
 
 // Construct your normal base prompt
-base_prompt = // Your normal prompt construction here
+base_prompt = <Your normal prompt construction here>
 
 // Inject header into prompt
 prompt = gate.render(
@@ -60,7 +60,7 @@ prompt = gate.render(
 )
 
 // Submit your prompt normally
-response = // your normal generation code
+response = <your normal generation code>
 
 update = gate.extract_update(response)
 state = gate.apply_update(update)
