@@ -42,8 +42,12 @@ import contextgate as cg
 
 gate = cg.ContextGate()
 
+// Construct your normal base prompt
+base_prompt = // Your normal prompt construction here
+
+// Inject header into prompt
 prompt = gate.render(
-    base_prompt="Answer using the current runtime state.",
+    base_prompt=base_prompt,
     hud={"current_room_id": "room_alpha", "participant_count": 5},
     content=[
         {
@@ -55,12 +59,8 @@ prompt = gate.render(
     ],
 )
 
-response = """
-Summary: Room updated.
-<CONTEXTGATE_UPDATE>
-{"hud":{"mode":"merge","fields":{"participant_count":6}}}
-</CONTEXTGATE_UPDATE>
-"""
+// Submit your prompt normally
+response = // your normal generation code
 
 update = gate.extract_update(response)
 state = gate.apply_update(update)
