@@ -140,9 +140,25 @@ def load_json_payload(raw_text: str) -> dict[str, Any]:
 def read_string_field(payload: dict[str, Any], field_path: str) -> str:
     current: Any = payload
     for part in field_path.split("."):
-        if not isinstance(current, dict) or part not in current:
-            raise ValueError(f"Missing field path: {field_path}")
-        current = current[part]
+        if isinstance(current, dict):
+            if part not in current:
+                raise ValueError(f"Missing field path: {field_path}")
+            current = current[part]
+            continue
+        if isinstance(current, list):
+            try:
+                index = int(part)
+            except ValueError as exc:
+                raise ValueError(
+                    f"Field path segment must be an integer for list access: {part}"
+                ) from exc
+            if index < 0:
+                index += len(current)
+            if index < 0 or index >= len(current):
+                raise ValueError(f"List index out of range in field path: {field_path}")
+            current = current[index]
+            continue
+        raise ValueError(f"Missing field path: {field_path}")
     if not isinstance(current, str):
         raise ValueError(f"Field path must resolve to a string: {field_path}")
     return current

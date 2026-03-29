@@ -319,6 +319,76 @@ def test_cli_reads_update_text_from_json_field(tmp_path, capsys) -> None:
     assert update["hud"]["fields"]["participant_count"] == 5
 
 
+def test_cli_reads_update_text_from_json_field_inside_list(tmp_path, capsys) -> None:
+    payload_path = tmp_path / "payload.json"
+    payload_path.write_text(
+        json.dumps(
+            {
+                "events": [
+                    {"assistant_text": "Earlier text"},
+                    {
+                        "assistant_text": (
+                            "Visible text\n"
+                            "<CONTEXTGATE_UPDATE>"
+                            '{"hud":{"mode":"merge","fields":{"participant_count":5}}}'
+                            "</CONTEXTGATE_UPDATE>"
+                        )
+                    },
+                ]
+            }
+        )
+    )
+
+    assert (
+        main([str(payload_path), "--update", "--read-update-from-field", "events.1.assistant_text"])
+        == 0
+    )
+    out = capsys.readouterr().out
+    update = json.loads(out)
+    assert update["hud"]["fields"]["participant_count"] == 5
+
+
+def test_cli_reads_update_text_from_json_field_using_negative_list_index(tmp_path, capsys) -> None:
+    payload_path = tmp_path / "payload.json"
+    payload_path.write_text(
+        json.dumps(
+            {
+                "events": [
+                    {"assistant_text": "Earlier text"},
+                    {
+                        "assistant_text": (
+                            "Visible text\n"
+                            "<CONTEXTGATE_UPDATE>"
+                            '{"hud":{"mode":"merge","fields":{"participant_count":7}}}'
+                            "</CONTEXTGATE_UPDATE>"
+                        )
+                    },
+                ]
+            }
+        )
+    )
+
+    assert (
+        main([str(payload_path), "--update", "--read-update-from-field", "events.-1.assistant_text"])
+        == 0
+    )
+    out = capsys.readouterr().out
+    update = json.loads(out)
+    assert update["hud"]["fields"]["participant_count"] == 7
+
+
+def test_cli_rejects_non_integer_list_segment_in_field_path(tmp_path, capsys) -> None:
+    payload_path = tmp_path / "payload.json"
+    payload_path.write_text(json.dumps({"events": [{"assistant_text": "Visible text"}]}))
+
+    assert (
+        main([str(payload_path), "--update", "--read-update-from-field", "events.last.assistant_text"])
+        == 1
+    )
+    err = capsys.readouterr().err
+    assert "Field path segment must be an integer for list access: last" in err
+
+
 def test_cli_can_print_visible_text_while_writing_state(tmp_path, monkeypatch, capsys) -> None:
     state_path = tmp_path / "state.json"
     state_path.write_text(

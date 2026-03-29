@@ -275,11 +275,17 @@ For a shell-level reject path, see:
 For a structured event-log pipeline, see:
 - `examples/cli_event_log_pipeline.sh`
 
+For an event-array pipeline using list-index field paths, see:
+- `examples/cli_event_array_pipeline.sh`
+
 For a full stderr side-channel pipeline with update, size, and diff output, see:
 - `examples/cli_stderr_all_pipeline.sh`
 
 For a minimal copyable event shape, see:
 - `examples/event_log_shape.json`
+
+For a minimal copyable event-array shape, see:
+- `examples/event_log_array_shape.json`
 
 ## CLI Helper
 
@@ -306,6 +312,7 @@ The CLI can:
 - write the updated normalized envelope back to disk for the next loop
 - emit compact JSON for machine-facing shells that do not want pretty-print whitespace
 - read model output text from a field inside a JSON log object
+- read model output text from nested lists inside a JSON log object using numeric path segments
 - print only visible response text while machine state is persisted elsewhere
 - emit validated update JSON to stderr for side-channel machine inspection
 - emit a structured before/after diff for applied state changes
@@ -359,6 +366,14 @@ contextgate event.json --update --read-update-from-field event.assistant_text
 ```
 
 That lets the CLI read assistant text from a structured log object instead of only plain text files.
+
+List segments in `--read-update-from-field` may be numeric indexes, including negative indexes for tail selection:
+
+```bash
+contextgate event_array.json --update --read-update-from-field events.-1.assistant_text
+```
+
+That lets the CLI pull the latest assistant text from an event array without a wrapper script.
 
 Example split-output flow for a CLI agent:
 

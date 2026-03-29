@@ -138,6 +138,23 @@ def test_cli_event_log_pipeline_example_runs() -> None:
     assert '"participant_count":5' in result.stdout
 
 
+def test_cli_event_array_pipeline_example_runs() -> None:
+    result = subprocess.run(
+        ["bash", "examples/cli_event_array_pipeline.sh"],
+        cwd=REPO_ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    assert "VISIBLE TEXT" in result.stdout
+    assert "Summary: Room updated." in result.stdout
+    assert "STDERR CHANNEL" in result.stdout
+    assert "contextgate: update-json" in result.stdout
+    assert "UPDATED STATE" in result.stdout
+    assert '"participant_count":5' in result.stdout
+
+
 def test_cli_stderr_all_pipeline_example_runs() -> None:
     result = subprocess.run(
         ["bash", "examples/cli_stderr_all_pipeline.sh"],
