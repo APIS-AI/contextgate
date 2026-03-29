@@ -258,6 +258,13 @@ Receiver behavior should stay simple:
 
 The reference implementation may still ship with a built-in default HUD profile so the demo path stays easy.
 
+The matching runtime behavior should also include a HUD assembler:
+- take the validated HUD schema
+- take the validated HUD values
+- build one current authoritative HUD object
+- apply replace semantics by default
+- emit only the compact active HUD block for prompt-visible assembly
+
 ### 7.4 Key Rule
 
 **Remote data may update prompt-visible state, but remote data may not silently become authority.**
@@ -643,6 +650,7 @@ For `v0`, a runtime may also register a built-in HUD profile locally and use the
 ```python
 gate = ContextGate(default_hud_schema=DefaultHudV0)
 gate.register_hud_schema(remote_packet.get("hud_schema"))
+gate.assemble_hud(remote_packet.get("hud"))
 ```
 
 Or even thinner:
@@ -691,6 +699,7 @@ It should be a narrow reference package.
 
 - `assemble.py`
   - safe prompt-visible assembly
+  - HUD assembly from validated schema + values
   - replace semantics for HUD
   - quoted rendering for untrusted display fields
 

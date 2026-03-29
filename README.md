@@ -90,6 +90,13 @@ Receiver behavior should be minimal:
 
 The first reference implementation can still ship with one built-in default HUD profile so adoption stays easy.
 
+The runtime should also have a matching HUD assembler:
+- take the validated schema
+- take the validated HUD values
+- build one current authoritative HUD object
+- replace the old HUD by default
+- emit only the compact active HUD block
+
 ## HeaderForge Example
 
 `DESKTOP` still makes sense as a trusted local `HeaderForge` example.
@@ -139,6 +146,7 @@ For the first implementation, the core can stay schema-driven while the demo shi
 ```python
 gate = ContextGate(default_hud_schema=DefaultHudV0)
 gate.register_hud_schema(remote_packet.get("hud_schema"))
+gate.assemble_hud(remote_packet.get("hud"))
 ```
 
 Important constraint:
