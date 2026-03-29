@@ -676,3 +676,74 @@ def test_cli_emits_json_error_for_usage_failure(tmp_path, capsys) -> None:
     assert err["error"]["category"] == "usage"
     assert err["error"]["exit_code"] == 2
     assert "--stdout visible-text requires --update or --apply-update" in err["error"]["message"]
+
+
+def test_cli_emits_stderr_json_update_record(monkeypatch, capsys) -> None:
+    response = "Visible text\n<CONTEXTGATE_UPDATE>{\"hud\":{\"mode\":\"merge\",\"fields\":{\"participant_count\":5}}}</CONTEXTGATE_UPDATE>"
+    monkeypatch.setattr("sys.stdin", StringIO(response))
+
+    assert main(["--update", "--stderr-json", "update"]) == 0
+    captured = capsys.readouterr()
+    record = json.loads(captured.err)
+    assert record["channel"] == "update"
+    assert record["data"]["hud"]["fields"]["participant_count"] == 5
+
+
+def test_cli_emits_stderr_json_all_records_for_apply(tmp_path, monkeypatch, capsys) -> None:
+    state_path = tmp_path / "state.json"
+    state_path.write_text(
+        json.dumps(
+            {
+                "ctx_version": "0.1",
+                "auth": {"source": "local_runtime", "trust": "trusted"},
+                "hud": {"mode": "replace", "fields": {"participant_count": 2}},
+                "content": [],
+                "transcript": ["Older residue"],
+            }
+        )
+    )
+    response = """Summary: Room updated.
+<CONTEXTGATE_UPDATE>{"hud":{"mode":"merge","fields":{"participant_count":5}},"transcript":{"mode":"merge","items":["Newest residue"]}}</CONTEXTGATE_UPDATE>"""
+    monkeypatch.setattr("sys.stdin", StringIO(response))
+
+    assert (
+        main(
+            [
+                "--apply-update",
+                "--state",
+                str(state_path),
+                "--stdout",
+                "visible-text",
+                "--stderr-json",
+                "all",
+            ]
+        )
+        == 0
+    )
+    captured = capsys.readouterr()
+    records = [json.loads(line) for line in captured.err.strip().splitlines()]
+    assert [record["channel"] for record in records] == ["update", "size", "diff"]
+    assert records[1]["data"]["transcript_items"] == 2
+    assert records[2]["data"]["hud"]["changed_fields"]["participant_count"] == {
+        "after": 5,
+        "before": 2,
+    }
+
+
+def test_cli_rejects_stderr_json_diff_without_apply(tmp_path, capsys) -> None:
+    envelope_path = tmp_path / "envelope.json"
+    envelope_path.write_text(
+        json.dumps(
+            {
+                "ctx_version": "0.1",
+                "auth": {"source": "local_runtime", "trust": "trusted"},
+                "hud": {"mode": "replace", "fields": {"participant_count": 2}},
+                "content": [],
+                "transcript": [],
+            }
+        )
+    )
+
+    assert main([str(envelope_path), "--stderr-json", "diff"]) == 2
+    err = capsys.readouterr().err
+    assert "--stderr-json diff requires --apply-update" in err

@@ -287,9 +287,15 @@ For a shell example that branches on CLI exit codes, see:
 For a provider-wrapper event log pipeline, see:
 - `examples/cli_provider_wrapper_pipeline.sh`
 
+For an OpenAI-style chat wrapper pipeline, see:
+- `examples/cli_openai_chat_wrapper_pipeline.sh`
+
 For scoped diff shell examples, see:
 - `examples/cli_hud_diff.sh`
 - `examples/cli_transcript_diff.sh`
+
+For a combined diagnostics loop showing success and failure handling, see:
+- `examples/cli_combined_diagnostics.sh`
 
 For a minimal copyable event shape, see:
 - `examples/event_log_shape.json`
@@ -299,6 +305,9 @@ For a minimal copyable event-array shape, see:
 
 For a minimal provider-wrapper event shape, see:
 - `examples/provider_wrapper_event.json`
+
+For a minimal OpenAI-style chat wrapper shape, see:
+- `examples/openai_chat_completions_wrapper.json`
 
 ## CLI Helper
 
@@ -316,6 +325,7 @@ cat model_output.txt | contextgate --apply-update --state state.json --write-sta
 cat model_output.txt | contextgate --apply-update --state state.json --stdout visible-text --stderr all --report-diff
 cat model_output.txt | contextgate --apply-update --state state.json --stdout visible-text --report-diff hud
 cat model_output.txt | contextgate --update --json-errors
+cat model_output.txt | contextgate --apply-update --state state.json --stderr-json all
 ```
 
 The CLI can:
@@ -330,6 +340,7 @@ The CLI can:
 - read model output text from nested lists inside a JSON log object using numeric path segments
 - print only visible response text while machine state is persisted elsewhere
 - emit validated update JSON to stderr for side-channel machine inspection
+- emit machine-readable stderr JSON records for update, size, and diff channels
 - emit a structured before/after diff for applied state changes
 - emit machine-readable JSON error objects to stderr
 
@@ -349,6 +360,7 @@ Policy flags supported by `--apply-update`:
 - `--read-update-from-field`
 - `--stdout json|render|visible-text`
 - `--stderr update-json|all`
+- `--stderr-json update|size|diff|all`
 - `--report-diff [all|hud|content|transcript]`
 - `--json-errors`
 
@@ -369,6 +381,14 @@ cat model_output.txt | contextgate --update --json-errors
 ```
 
 That emits a compact JSON error object to stderr instead of plain text when the command fails.
+
+Example machine-readable diagnostics flow:
+
+```bash
+cat model_output.txt | contextgate --apply-update --state state.json --stderr-json all
+```
+
+That emits JSON stderr records for update, size, and diff channels.
 
 Example `reject` path:
 
@@ -409,6 +429,14 @@ contextgate examples/provider_wrapper_event.json --apply-update --state state.js
 ```
 
 That shows the same extraction path working against a provider-style wrapper object instead of a bare event record.
+
+Example OpenAI-style chat wrapper flow for a CLI agent:
+
+```bash
+contextgate examples/openai_chat_completions_wrapper.json --apply-update --state state.json --read-update-from-field choices.0.message.content
+```
+
+That shows the same extraction path against a chat-completions-style wrapper where assistant text lives under `choices.0.message.content`.
 
 List segments in `--read-update-from-field` may be numeric indexes, including negative indexes for tail selection:
 
@@ -453,6 +481,9 @@ That limits stderr diff output to the HUD section only.
 For runnable scoped diff examples, see:
 - `examples/cli_hud_diff.sh`
 - `examples/cli_transcript_diff.sh`
+
+For a combined success/failure diagnostics example, see:
+- `examples/cli_combined_diagnostics.sh`
 
 For `v0`, update-channel validation is intentionally strict:
 - only supported top-level sections are accepted

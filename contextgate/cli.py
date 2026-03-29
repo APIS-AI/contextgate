@@ -123,6 +123,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="Optional stderr channel for validated machine update data. 'all' also includes size reporting.",
     )
     parser.add_argument(
+        "--stderr-json",
+        choices=("update", "size", "diff", "all"),
+        help="Emit machine-readable JSON records to stderr for selected diagnostic channels.",
+    )
+    parser.add_argument(
         "--json-errors",
         action="store_true",
         help="Emit machine-readable JSON errors to stderr instead of plain text.",
@@ -217,6 +222,17 @@ def render_envelope_block(
 
 
 def emit_size_report(envelope: dict[str, Any]) -> None:
+    size_info = build_size_info(envelope)
+    print(
+        "contextgate: size "
+        f"hud_fields={size_info['hud_fields']} "
+        f"content_items={size_info['content_items']} "
+        f"transcript_items={size_info['transcript_items']}",
+        file=sys.stderr,
+    )
+
+
+def build_size_info(envelope: dict[str, Any]) -> dict[str, int]:
     hud = envelope.get("hud", {})
     hud_fields = 0
     if isinstance(hud, dict):
@@ -225,13 +241,11 @@ def emit_size_report(envelope: dict[str, Any]) -> None:
             hud_fields = len(fields)
     content = envelope.get("content", [])
     transcript = envelope.get("transcript", [])
-    print(
-        "contextgate: size "
-        f"hud_fields={hud_fields} "
-        f"content_items={len(content)} "
-        f"transcript_items={len(transcript)}",
-        file=sys.stderr,
-    )
+    return {
+        "hud_fields": hud_fields,
+        "content_items": len(content),
+        "transcript_items": len(transcript),
+    }
 
 
 def write_state(path: str, envelope: dict[str, Any]) -> None:
@@ -312,6 +326,17 @@ def select_diff_scope(diff: dict[str, Any], scope: str) -> dict[str, Any]:
     if scope == "all":
         return diff
     return {scope: diff[scope]}
+
+
+def emit_stderr_json_record(channel: str, data: Any) -> None:
+    print(
+        json.dumps(
+            {"channel": channel, "data": data},
+            separators=(",", ":"),
+            sort_keys=True,
+        ),
+        file=sys.stderr,
+    )
 
 
 def resolve_stdout_mode(args: argparse.Namespace) -> str:
@@ -422,6 +447,46 @@ def main(argv: list[str] | None = None) -> int:
         exit_code = classify_exception(exc)
         emit_error(str(exc), exit_code=exit_code, as_json=args.json_errors)
         return exit_code
+
+    if args.stderr_json:
+        if args.stderr_json == "update":
+            if extracted_update is None:
+                emit_error(
+                    "--stderr-json update requires --update or --apply-update",
+                    exit_code=EXIT_USAGE,
+                    as_json=args.json_errors,
+                )
+                return EXIT_USAGE
+            emit_stderr_json_record("update", extracted_update)
+        elif args.stderr_json == "size":
+            if not isinstance(normalized, dict) or "ctx_version" not in normalized:
+                emit_error(
+                    "--stderr-json size requires a normalized envelope",
+                    exit_code=EXIT_USAGE,
+                    as_json=args.json_errors,
+                )
+                return EXIT_USAGE
+            emit_stderr_json_record("size", build_size_info(normalized))
+        elif args.stderr_json == "diff":
+            if state_diff is None:
+                emit_error(
+                    "--stderr-json diff requires --apply-update",
+                    exit_code=EXIT_USAGE,
+                    as_json=args.json_errors,
+                )
+                return EXIT_USAGE
+            emit_stderr_json_record("diff", state_diff)
+        else:
+            if extracted_update is None or state_diff is None:
+                emit_error(
+                    "--stderr-json all requires --apply-update",
+                    exit_code=EXIT_USAGE,
+                    as_json=args.json_errors,
+                )
+                return EXIT_USAGE
+            emit_stderr_json_record("update", extracted_update)
+            emit_stderr_json_record("size", build_size_info(normalized))
+            emit_stderr_json_record("diff", state_diff)
 
     if args.stderr in {"update-json", "all"}:
         if extracted_update is None:

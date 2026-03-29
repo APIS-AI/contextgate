@@ -1,0 +1,14 @@
+{
+  "id": "chatcmpl_example_001",
+  "object": "chat.completion",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "Summary: Room updated.\n<CONTEXTGATE_UPDATE>{\"hud\":{\"mode\":\"merge\",\"fields\":{\"participant_count\":5}}}</CONTEXTGATE_UPDATE>"
+      },
+      "finish_reason": "stop"
+    }
+  ]
+}
