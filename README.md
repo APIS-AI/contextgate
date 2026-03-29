@@ -99,7 +99,7 @@ The runtime should also have a matching HUD assembler:
 
 ## HeaderForge Example
 
-`DESKTOP` still makes sense as a trusted local `HeaderForge` example.
+`DESKTOP` has been included as a trusted local `HeaderForge` example.
 
 A runtime may render local working files into a `DESKTOP` header and inject that into prompt-visible context, but that behavior is implementation-defined and outside the ContextGate wire protocol.
 
