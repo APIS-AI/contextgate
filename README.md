@@ -260,6 +260,9 @@ For a compact accepted/rejected update payload tour, see:
 For a full render → extract → apply → re-render update lifecycle, see:
 - `examples/update_lifecycle.py`
 
+For an explicit hard-fail overflow example, see:
+- `examples/update_reject_mode.py`
+
 ## CLI Helper
 
 A small CLI is included to validate and normalize envelopes from a file or stdin:
@@ -268,11 +271,30 @@ A small CLI is included to validate and normalize envelopes from a file or stdin
 contextgate envelope.json
 cat rendered_prompt.txt | contextgate
 cat model_output.txt | contextgate --update
+cat model_output.txt | contextgate --apply-update --state state.json --content-limit 20
 ```
 
 The CLI can:
 - normalize full envelopes
 - extract and validate only the update channel
+- apply updates against active state with the same compaction policies as `ContextGate(...)`
+
+Policy flags supported by `--apply-update`:
+- `--state`
+- `--content-limit`
+- `--transcript-limit`
+- `--dedupe-content`
+- `--dedupe-transcript`
+- `--content-overflow truncate|reject`
+- `--transcript-overflow truncate|reject`
+
+Example `reject` path:
+
+```bash
+cat model_output.txt | contextgate --apply-update --state state.json --content-limit 1 --content-overflow reject
+```
+
+That command fails nonzero if the merged content would exceed the configured limit.
 
 For `v0`, update-channel validation is intentionally strict:
 - only supported top-level sections are accepted
@@ -339,6 +361,7 @@ examples/
   end_to_end_prompt_assembly.py
   update_payloads.py
   update_lifecycle.py
+  update_reject_mode.py
   rejected_malicious_update.py
 
 tests/

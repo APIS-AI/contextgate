@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from .gate import ContextGate
 from .parser import parse_envelope
 from .schemas import parse_hud_schema
 from .update_channel import extract_update
@@ -28,6 +29,47 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Parse only the CONTEXTGATE update channel from model output.",
     )
+    parser.add_argument(
+        "--apply-update",
+        action="store_true",
+        help="Extract an update, apply it to active state, and print the resulting envelope.",
+    )
+    parser.add_argument(
+        "--state",
+        help="Optional path to an initial envelope JSON file or rendered prompt block.",
+    )
+    parser.add_argument(
+        "--content-limit",
+        type=int,
+        help="Maximum number of active content items after policy application.",
+    )
+    parser.add_argument(
+        "--transcript-limit",
+        type=int,
+        help="Maximum number of active transcript items after policy application.",
+    )
+    parser.add_argument(
+        "--dedupe-content",
+        action="store_true",
+        help="Remove repeated content items before applying content limits.",
+    )
+    parser.add_argument(
+        "--dedupe-transcript",
+        action="store_true",
+        help="Remove repeated transcript items before applying transcript limits.",
+    )
+    parser.add_argument(
+        "--content-overflow",
+        choices=("truncate", "reject"),
+        default="truncate",
+        help="Behavior when content exceeds --content-limit after policy application.",
+    )
+    parser.add_argument(
+        "--transcript-overflow",
+        choices=("truncate", "reject"),
+        default="truncate",
+        help="Behavior when transcript exceeds --transcript-limit after policy application.",
+    )
     return parser
 
 
@@ -44,6 +86,30 @@ def load_schema(path: str | None):
     return parse_hud_schema(payload)
 
 
+def build_gate(args: argparse.Namespace, default_schema: Any) -> ContextGate:
+    return ContextGate(
+        default_hud_schema=default_schema,
+        content_limit=args.content_limit,
+        transcript_limit=args.transcript_limit,
+        dedupe_content=args.dedupe_content,
+        dedupe_transcript=args.dedupe_transcript,
+        content_overflow=args.content_overflow,
+        transcript_overflow=args.transcript_overflow,
+    )
+
+
+def load_initial_state(path: str, gate: ContextGate) -> None:
+    raw_text = load_text(path)
+    try:
+        payload: dict[str, Any] | str = json.loads(raw_text)
+    except json.JSONDecodeError:
+        payload = raw_text
+    normalized = gate.parse_envelope(payload)
+    gate.active_hud = dict(normalized["hud"])
+    gate.active_content = list(normalized["content"])
+    gate.active_transcript = list(normalized["transcript"])
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -52,7 +118,16 @@ def main(argv: list[str] | None = None) -> int:
     default_schema = load_schema(args.schema)
 
     try:
-        if args.update:
+        if args.apply_update:
+            gate = build_gate(args, default_schema)
+            if args.state:
+                load_initial_state(args.state, gate)
+            normalized = gate.extract_update(raw_text)
+            if normalized is None:
+                raise ValueError("No CONTEXTGATE update block found")
+            gate.apply_update(normalized)
+            normalized = gate.build_envelope()
+        elif args.update:
             normalized = extract_update(raw_text, hud_schema=default_schema)
             if normalized is None:
                 raise ValueError("No CONTEXTGATE update block found")

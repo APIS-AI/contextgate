@@ -75,3 +75,104 @@ def test_cli_rejects_invalid_hud_update_against_schema(tmp_path, monkeypatch, ca
     assert main(["--update", "--schema", str(schema_path)]) == 1
     err = capsys.readouterr().err
     assert "Expected integer" in err
+
+
+def test_cli_applies_update_with_truncation_policy(tmp_path, monkeypatch, capsys) -> None:
+    state_path = tmp_path / "state.json"
+    state_path.write_text(
+        json.dumps(
+            {
+                "ctx_version": "0.1",
+                "auth": {"source": "local_runtime", "trust": "trusted"},
+                "hud": {"mode": "replace", "fields": {}},
+                "content": [
+                    {
+                        "label": "room_title",
+                        "field_class": "display_text",
+                        "trust": "untrusted",
+                        "value": "Main Room",
+                    }
+                ],
+                "transcript": ["Older residue"],
+            }
+        )
+    )
+    response = """Visible text
+<CONTEXTGATE_UPDATE>{"content":{"mode":"merge","items":[{"label":"room_title","field_class":"display_text","trust":"untrusted","value":"Main Room"},{"label":"latest_message","field_class":"message_text","trust":"untrusted","value":"Hello"},{"label":"status","field_class":"status_text","trust":"trusted","value":"stable"}]},"transcript":{"mode":"merge","items":["Older residue","Newest residue"]}}</CONTEXTGATE_UPDATE>"""
+    monkeypatch.setattr("sys.stdin", StringIO(response))
+
+    assert (
+        main(
+            [
+                "--apply-update",
+                "--state",
+                str(state_path),
+                "--content-limit",
+                "2",
+                "--transcript-limit",
+                "2",
+                "--dedupe-content",
+                "--dedupe-transcript",
+            ]
+        )
+        == 0
+    )
+    out = capsys.readouterr().out
+    envelope = json.loads(out)
+    assert envelope["content"] == [
+        {
+            "label": "latest_message",
+            "field_class": "message_text",
+            "trust": "untrusted",
+            "value": "Hello",
+        },
+        {
+            "label": "status",
+            "field_class": "status_text",
+            "trust": "trusted",
+            "value": "stable",
+        },
+    ]
+    assert envelope["transcript"] == ["Older residue", "Newest residue"]
+
+
+def test_cli_applies_update_with_reject_policy(tmp_path, monkeypatch, capsys) -> None:
+    state_path = tmp_path / "state.json"
+    state_path.write_text(
+        json.dumps(
+            {
+                "ctx_version": "0.1",
+                "auth": {"source": "local_runtime", "trust": "trusted"},
+                "hud": {"mode": "replace", "fields": {}},
+                "content": [
+                    {
+                        "label": "room_title",
+                        "field_class": "display_text",
+                        "trust": "untrusted",
+                        "value": "Main Room",
+                    }
+                ],
+                "transcript": [],
+            }
+        )
+    )
+    response = """Visible text
+<CONTEXTGATE_UPDATE>{"content":{"mode":"merge","items":[{"label":"latest_message","field_class":"message_text","trust":"untrusted","value":"Hello"}]}}</CONTEXTGATE_UPDATE>"""
+    monkeypatch.setattr("sys.stdin", StringIO(response))
+
+    assert (
+        main(
+            [
+                "--apply-update",
+                "--state",
+                str(state_path),
+                "--content-limit",
+                "1",
+                "--content-overflow",
+                "reject",
+            ]
+        )
+        == 1
+    )
+    err = capsys.readouterr().err
+    assert "Content limit exceeded by 1 item(s)" in err

@@ -63,3 +63,16 @@ def test_update_lifecycle_example_runs() -> None:
     assert "VISIBLE RESPONSE" in result.stdout
     assert "RERENDERED" in result.stdout
     assert "Hello from the room" in result.stdout
+
+
+def test_update_reject_mode_example_runs() -> None:
+    result = subprocess.run(
+        [sys.executable, "examples/update_reject_mode.py"],
+        cwd=REPO_ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    assert "Rejected update:" in result.stdout
+    assert "Content limit exceeded by 1 item(s)" in result.stdout
