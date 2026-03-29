@@ -269,6 +269,9 @@ For a file-driven CLI apply flow, see:
 For a shell-level agent loop, see:
 - `examples/cli_agent_loop.sh`
 
+For a shell-level reject path, see:
+- `examples/cli_reject_loop.sh`
+
 ## CLI Helper
 
 A small CLI is included to validate and normalize envelopes from a file or stdin:
@@ -280,6 +283,7 @@ cat model_output.txt | contextgate --update
 cat model_output.txt | contextgate --apply-update --state state.json --content-limit 20
 cat model_output.txt | contextgate --apply-update --state state.json --render --base-prompt "Continue."
 cat model_output.txt | contextgate --apply-update --state state.json --write-state state.json --compact-json
+contextgate event.json --update --read-update-from-field event.assistant_text
 ```
 
 The CLI can:
@@ -290,6 +294,8 @@ The CLI can:
 - report active HUD/content/transcript sizes for shell-level debugging
 - write the updated normalized envelope back to disk for the next loop
 - emit compact JSON for machine-facing shells that do not want pretty-print whitespace
+- read model output text from a field inside a JSON log object
+- print only visible response text while machine state is persisted elsewhere
 
 Policy flags supported by `--apply-update`:
 - `--state`
@@ -304,6 +310,8 @@ Policy flags supported by `--apply-update`:
 - `--report-sizes`
 - `--write-state`
 - `--compact-json`
+- `--read-update-from-field`
+- `--stdout json|render|visible-text`
 
 Example `reject` path:
 
@@ -328,6 +336,22 @@ cat model_output.txt | contextgate --apply-update --state state.json --write-sta
 ```
 
 That updates `state.json` in place so the next shell step can reuse the latest active envelope without custom glue code.
+
+Example log-ingest flow for a CLI agent:
+
+```bash
+contextgate event.json --update --read-update-from-field event.assistant_text
+```
+
+That lets the CLI read assistant text from a structured log object instead of only plain text files.
+
+Example split-output flow for a CLI agent:
+
+```bash
+cat model_output.txt | contextgate --apply-update --state state.json --write-state state.json --stdout visible-text
+```
+
+That writes updated machine state to `state.json` while emitting only the user-visible text to stdout.
 
 For `v0`, update-channel validation is intentionally strict:
 - only supported top-level sections are accepted
@@ -397,6 +421,7 @@ examples/
   update_reject_mode.py
   cli_apply_update_flow.py
   cli_agent_loop.sh
+  cli_reject_loop.sh
   rejected_malicious_update.py
 
 tests/

@@ -9,7 +9,7 @@ from typing import Any
 from .gate import ContextGate
 from .parser import parse_envelope
 from .schemas import parse_hud_schema
-from .update_channel import extract_update
+from .update_channel import extract_update, strip_update
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -94,6 +94,15 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Print compact JSON instead of indented JSON when not using --render.",
     )
+    parser.add_argument(
+        "--read-update-from-field",
+        help="Optional dot path to a string field inside a JSON input object used as model output text.",
+    )
+    parser.add_argument(
+        "--stdout",
+        choices=("json", "render", "visible-text"),
+        help="Override stdout behavior. Useful with --write-state when machine state and visible text need to be split.",
+    )
     return parser
 
 
@@ -108,6 +117,24 @@ def load_schema(path: str | None):
         return None
     payload = json.loads(Path(path).read_text())
     return parse_hud_schema(payload)
+
+
+def load_json_payload(raw_text: str) -> dict[str, Any]:
+    payload = json.loads(raw_text)
+    if not isinstance(payload, dict):
+        raise ValueError("Expected top-level JSON object when reading from a field")
+    return payload
+
+
+def read_string_field(payload: dict[str, Any], field_path: str) -> str:
+    current: Any = payload
+    for part in field_path.split("."):
+        if not isinstance(current, dict) or part not in current:
+            raise ValueError(f"Missing field path: {field_path}")
+        current = current[part]
+    if not isinstance(current, str):
+        raise ValueError(f"Field path must resolve to a string: {field_path}")
+    return current
 
 
 def build_gate(args: argparse.Namespace, default_schema: Any) -> ContextGate:
@@ -171,24 +198,43 @@ def write_state(path: str, envelope: dict[str, Any]) -> None:
     Path(path).write_text(json.dumps(envelope, indent=2, sort_keys=True) + "\n")
 
 
+def resolve_stdout_mode(args: argparse.Namespace) -> str:
+    if args.stdout:
+        return args.stdout
+    if args.render:
+        return "render"
+    return "json"
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
 
     raw_text = load_text(args.input)
     default_schema = load_schema(args.schema)
+    visible_text: str | None = None
+
+    if args.read_update_from_field:
+        try:
+            payload = load_json_payload(raw_text)
+            raw_text = read_string_field(payload, args.read_update_from_field)
+        except Exception as exc:
+            print(f"contextgate: {exc}", file=sys.stderr)
+            return 1
 
     try:
         if args.apply_update:
             gate = build_gate(args, default_schema)
             if args.state:
                 load_initial_state(args.state, gate)
+            visible_text = strip_update(raw_text)
             normalized = gate.extract_update(raw_text)
             if normalized is None:
                 raise ValueError("No CONTEXTGATE update block found")
             gate.apply_update(normalized)
             normalized = gate.build_envelope()
         elif args.update:
+            visible_text = strip_update(raw_text)
             normalized = extract_update(raw_text, hud_schema=default_schema)
             if normalized is None:
                 raise ValueError("No CONTEXTGATE update block found")
@@ -208,7 +254,16 @@ def main(argv: list[str] | None = None) -> int:
     if args.write_state and isinstance(normalized, dict):
         write_state(args.write_state, normalized)
 
-    if args.render:
+    stdout_mode = resolve_stdout_mode(args)
+    if stdout_mode == "visible-text":
+        if visible_text is None:
+            print("contextgate: --stdout visible-text requires --update or --apply-update", file=sys.stderr)
+            return 1
+        print(visible_text)
+    elif stdout_mode == "render":
+        if not isinstance(normalized, dict) or "ctx_version" not in normalized:
+            print("contextgate: render output requires a normalized envelope", file=sys.stderr)
+            return 1
         print(render_envelope_block(normalized, base_prompt=args.base_prompt))
     else:
         if args.compact_json:

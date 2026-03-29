@@ -294,3 +294,83 @@ def test_cli_prints_compact_json(tmp_path, monkeypatch, capsys) -> None:
     assert "\n" not in out
     assert out.startswith("{")
     assert '"participant_count":5' in out
+
+
+def test_cli_reads_update_text_from_json_field(tmp_path, capsys) -> None:
+    payload_path = tmp_path / "payload.json"
+    payload_path.write_text(
+        json.dumps(
+            {
+                "event": {
+                    "assistant_text": (
+                        "Visible text\n"
+                        "<CONTEXTGATE_UPDATE>"
+                        '{"hud":{"mode":"merge","fields":{"participant_count":5}}}'
+                        "</CONTEXTGATE_UPDATE>"
+                    )
+                }
+            }
+        )
+    )
+
+    assert main([str(payload_path), "--update", "--read-update-from-field", "event.assistant_text"]) == 0
+    out = capsys.readouterr().out
+    update = json.loads(out)
+    assert update["hud"]["fields"]["participant_count"] == 5
+
+
+def test_cli_can_print_visible_text_while_writing_state(tmp_path, monkeypatch, capsys) -> None:
+    state_path = tmp_path / "state.json"
+    state_path.write_text(
+        json.dumps(
+            {
+                "ctx_version": "0.1",
+                "auth": {"source": "local_runtime", "trust": "trusted"},
+                "hud": {"mode": "replace", "fields": {"participant_count": 2}},
+                "content": [],
+                "transcript": [],
+            }
+        )
+    )
+    response = """Summary: Room updated.
+<CONTEXTGATE_UPDATE>{"hud":{"mode":"merge","fields":{"participant_count":5}}}</CONTEXTGATE_UPDATE>"""
+    monkeypatch.setattr("sys.stdin", StringIO(response))
+
+    assert (
+        main(
+            [
+                "--apply-update",
+                "--state",
+                str(state_path),
+                "--write-state",
+                str(state_path),
+                "--stdout",
+                "visible-text",
+            ]
+        )
+        == 0
+    )
+    captured = capsys.readouterr()
+    assert "Summary: Room updated." in captured.out
+    assert "<CONTEXTGATE_UPDATE>" not in captured.out
+    written = json.loads(state_path.read_text())
+    assert written["hud"]["fields"]["participant_count"] == 5
+
+
+def test_cli_rejects_visible_text_stdout_for_envelope_mode(tmp_path, capsys) -> None:
+    envelope_path = tmp_path / "envelope.json"
+    envelope_path.write_text(
+        json.dumps(
+            {
+                "ctx_version": "0.1",
+                "auth": {"source": "local_runtime", "trust": "trusted"},
+                "hud": {"mode": "replace", "fields": {"participant_count": 2}},
+                "content": [],
+                "transcript": [],
+            }
+        )
+    )
+
+    assert main([str(envelope_path), "--stdout", "visible-text"]) == 1
+    err = capsys.readouterr().err
+    assert "--stdout visible-text requires --update or --apply-update" in err

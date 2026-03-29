@@ -105,3 +105,17 @@ def test_cli_agent_loop_shell_example_runs() -> None:
     assert "RENDERED PROMPT" in result.stdout
     assert '"participant_count":5' in result.stdout
     assert "<CONTEXTGATE_ENVELOPE>" in result.stdout
+
+
+def test_cli_reject_loop_shell_example_runs() -> None:
+    result = subprocess.run(
+        ["bash", "examples/cli_reject_loop.sh"],
+        cwd=REPO_ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    assert "EXIT STATUS" in result.stdout
+    assert "1" in result.stdout
+    assert "Content limit exceeded by 1 item(s)" in result.stdout
