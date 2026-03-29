@@ -103,6 +103,11 @@ def build_parser() -> argparse.ArgumentParser:
         choices=("json", "render", "visible-text"),
         help="Override stdout behavior. Useful with --write-state when machine state and visible text need to be split.",
     )
+    parser.add_argument(
+        "--stderr",
+        choices=("update-json", "all"),
+        help="Optional stderr channel for validated machine update data. 'all' also includes size reporting.",
+    )
     return parser
 
 
@@ -198,6 +203,14 @@ def write_state(path: str, envelope: dict[str, Any]) -> None:
     Path(path).write_text(json.dumps(envelope, indent=2, sort_keys=True) + "\n")
 
 
+def emit_update_json(update: dict[str, Any]) -> None:
+    print(
+        "contextgate: update-json "
+        + json.dumps(update, separators=(",", ":"), sort_keys=True),
+        file=sys.stderr,
+    )
+
+
 def resolve_stdout_mode(args: argparse.Namespace) -> str:
     if args.stdout:
         return args.stdout
@@ -213,6 +226,7 @@ def main(argv: list[str] | None = None) -> int:
     raw_text = load_text(args.input)
     default_schema = load_schema(args.schema)
     visible_text: str | None = None
+    extracted_update: dict[str, Any] | None = None
 
     if args.read_update_from_field:
         try:
@@ -228,16 +242,17 @@ def main(argv: list[str] | None = None) -> int:
             if args.state:
                 load_initial_state(args.state, gate)
             visible_text = strip_update(raw_text)
-            normalized = gate.extract_update(raw_text)
-            if normalized is None:
+            extracted_update = gate.extract_update(raw_text)
+            if extracted_update is None:
                 raise ValueError("No CONTEXTGATE update block found")
-            gate.apply_update(normalized)
+            gate.apply_update(extracted_update)
             normalized = gate.build_envelope()
         elif args.update:
             visible_text = strip_update(raw_text)
-            normalized = extract_update(raw_text, hud_schema=default_schema)
-            if normalized is None:
+            extracted_update = extract_update(raw_text, hud_schema=default_schema)
+            if extracted_update is None:
                 raise ValueError("No CONTEXTGATE update block found")
+            normalized = extracted_update
         else:
             try:
                 payload: dict[str, Any] | str = json.loads(raw_text)
@@ -248,7 +263,13 @@ def main(argv: list[str] | None = None) -> int:
         print(f"contextgate: {exc}", file=sys.stderr)
         return 1
 
-    if args.report_sizes and isinstance(normalized, dict):
+    if args.stderr in {"update-json", "all"}:
+        if extracted_update is None:
+            print("contextgate: --stderr requires --update or --apply-update", file=sys.stderr)
+            return 1
+        emit_update_json(extracted_update)
+
+    if (args.report_sizes or args.stderr == "all") and isinstance(normalized, dict):
         emit_size_report(normalized)
 
     if args.write_state and isinstance(normalized, dict):

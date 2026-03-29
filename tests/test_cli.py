@@ -374,3 +374,58 @@ def test_cli_rejects_visible_text_stdout_for_envelope_mode(tmp_path, capsys) -> 
     assert main([str(envelope_path), "--stdout", "visible-text"]) == 1
     err = capsys.readouterr().err
     assert "--stdout visible-text requires --update or --apply-update" in err
+
+
+def test_cli_emits_update_json_to_stderr(tmp_path, monkeypatch, capsys) -> None:
+    state_path = tmp_path / "state.json"
+    state_path.write_text(
+        json.dumps(
+            {
+                "ctx_version": "0.1",
+                "auth": {"source": "local_runtime", "trust": "trusted"},
+                "hud": {"mode": "replace", "fields": {"participant_count": 2}},
+                "content": [],
+                "transcript": [],
+            }
+        )
+    )
+    response = """Summary: Room updated.
+<CONTEXTGATE_UPDATE>{"hud":{"mode":"merge","fields":{"participant_count":5}}}</CONTEXTGATE_UPDATE>"""
+    monkeypatch.setattr("sys.stdin", StringIO(response))
+
+    assert (
+        main(
+            [
+                "--apply-update",
+                "--state",
+                str(state_path),
+                "--stdout",
+                "visible-text",
+                "--stderr",
+                "update-json",
+            ]
+        )
+        == 0
+    )
+    captured = capsys.readouterr()
+    assert "Summary: Room updated." in captured.out
+    assert 'contextgate: update-json {"hud":{"fields":{"participant_count":5},"mode":"merge"}}' in captured.err
+
+
+def test_cli_rejects_stderr_update_json_for_envelope_mode(tmp_path, capsys) -> None:
+    envelope_path = tmp_path / "envelope.json"
+    envelope_path.write_text(
+        json.dumps(
+            {
+                "ctx_version": "0.1",
+                "auth": {"source": "local_runtime", "trust": "trusted"},
+                "hud": {"mode": "replace", "fields": {"participant_count": 2}},
+                "content": [],
+                "transcript": [],
+            }
+        )
+    )
+
+    assert main([str(envelope_path), "--stderr", "update-json"]) == 1
+    err = capsys.readouterr().err
+    assert "--stderr requires --update or --apply-update" in err

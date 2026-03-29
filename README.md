@@ -272,6 +272,12 @@ For a shell-level agent loop, see:
 For a shell-level reject path, see:
 - `examples/cli_reject_loop.sh`
 
+For a structured event-log pipeline, see:
+- `examples/cli_event_log_pipeline.sh`
+
+For a minimal copyable event shape, see:
+- `examples/event_log_shape.json`
+
 ## CLI Helper
 
 A small CLI is included to validate and normalize envelopes from a file or stdin:
@@ -284,6 +290,7 @@ cat model_output.txt | contextgate --apply-update --state state.json --content-l
 cat model_output.txt | contextgate --apply-update --state state.json --render --base-prompt "Continue."
 cat model_output.txt | contextgate --apply-update --state state.json --write-state state.json --compact-json
 contextgate event.json --update --read-update-from-field event.assistant_text
+cat model_output.txt | contextgate --apply-update --state state.json --write-state state.json --stdout visible-text --stderr update-json
 ```
 
 The CLI can:
@@ -296,6 +303,7 @@ The CLI can:
 - emit compact JSON for machine-facing shells that do not want pretty-print whitespace
 - read model output text from a field inside a JSON log object
 - print only visible response text while machine state is persisted elsewhere
+- emit validated update JSON to stderr for side-channel machine inspection
 
 Policy flags supported by `--apply-update`:
 - `--state`
@@ -312,6 +320,7 @@ Policy flags supported by `--apply-update`:
 - `--compact-json`
 - `--read-update-from-field`
 - `--stdout json|render|visible-text`
+- `--stderr update-json|all`
 
 Example `reject` path:
 
@@ -352,6 +361,14 @@ cat model_output.txt | contextgate --apply-update --state state.json --write-sta
 ```
 
 That writes updated machine state to `state.json` while emitting only the user-visible text to stdout.
+
+Example split-channel flow for a CLI agent:
+
+```bash
+cat model_output.txt | contextgate --apply-update --state state.json --write-state state.json --stdout visible-text --stderr update-json
+```
+
+That emits visible assistant text to stdout while sending the validated machine update JSON to stderr.
 
 For `v0`, update-channel validation is intentionally strict:
 - only supported top-level sections are accepted
@@ -422,6 +439,8 @@ examples/
   cli_apply_update_flow.py
   cli_agent_loop.sh
   cli_reject_loop.sh
+  cli_event_log_pipeline.sh
+  event_log_shape.json
   rejected_malicious_update.py
 
 tests/

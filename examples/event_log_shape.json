@@ -1,0 +1,7 @@
+{
+  "event": {
+    "kind": "assistant_turn",
+    "turn_id": "turn_001",
+    "assistant_text": "Summary: Room updated.\n<CONTEXTGATE_UPDATE>{\"hud\":{\"mode\":\"merge\",\"fields\":{\"participant_count\":5}}}</CONTEXTGATE_UPDATE>"
+  }
+}
