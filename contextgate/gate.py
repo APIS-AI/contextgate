@@ -18,6 +18,8 @@ class ContextGate:
         transcript_limit: int | None = None,
         dedupe_content: bool = False,
         dedupe_transcript: bool = False,
+        content_overflow: str = "truncate",
+        transcript_overflow: str = "truncate",
     ) -> None:
         if isinstance(default_hud_schema, dict):
             self.default_hud_schema = parse_hud_schema(default_hud_schema)
@@ -27,6 +29,8 @@ class ContextGate:
         self.transcript_limit = transcript_limit
         self.dedupe_content = dedupe_content
         self.dedupe_transcript = dedupe_transcript
+        self.content_overflow = content_overflow
+        self.transcript_overflow = transcript_overflow
         self.active_hud: dict[str, Any] = {"mode": "replace", "fields": {}}
         self.active_content: list[dict[str, Any]] = []
         self.active_transcript: list[str] = []
@@ -80,7 +84,18 @@ class ContextGate:
                 deduped.append(item)
             normalized = deduped
         if self.content_limit is not None:
-            normalized = normalized[-self.content_limit :]
+            overflow = len(normalized) - self.content_limit
+            if overflow > 0:
+                if self.content_overflow == "truncate":
+                    normalized = normalized[-self.content_limit :]
+                elif self.content_overflow == "reject":
+                    raise ValueError(
+                        f"Content limit exceeded by {overflow} item(s)"
+                    )
+                else:
+                    raise ValueError(
+                        f"Unsupported content overflow policy: {self.content_overflow}"
+                    )
         return normalized
 
     def _apply_transcript_policy(self, items: list[str]) -> list[str]:
@@ -95,7 +110,19 @@ class ContextGate:
                 deduped.append(item)
             normalized = deduped
         if self.transcript_limit is not None:
-            normalized = normalized[-self.transcript_limit :]
+            overflow = len(normalized) - self.transcript_limit
+            if overflow > 0:
+                if self.transcript_overflow == "truncate":
+                    normalized = normalized[-self.transcript_limit :]
+                elif self.transcript_overflow == "reject":
+                    raise ValueError(
+                        f"Transcript limit exceeded by {overflow} item(s)"
+                    )
+                else:
+                    raise ValueError(
+                        "Unsupported transcript overflow policy: "
+                        f"{self.transcript_overflow}"
+                    )
         return normalized
 
     def render(

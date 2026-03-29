@@ -15,7 +15,13 @@ from examples.trusted_hud_from_os import build_trusted_os_hud
 def main() -> None:
     hud_schema, trusted_hud = build_trusted_os_hud()
 
-    gate = ContextGate(default_hud_schema=hud_schema)
+    gate = ContextGate(
+        default_hud_schema=hud_schema,
+        content_limit=2,
+        transcript_limit=2,
+        dedupe_content=True,
+        dedupe_transcript=True,
+    )
     gate.register_hud_schema(hud_schema)
     gate.assemble_hud(trusted_hud)
     gate.apply_update(
@@ -40,7 +46,7 @@ def main() -> None:
     response = """
 Summary: The room is stable.
 <CONTEXTGATE_UPDATE>
-{"hud":{"mode":"merge","fields":{"current_date_local":"2026-03-28"}},"content":{"mode":"merge","items":[{"label":"latest_message","field_class":"message_text","trust":"untrusted","value":"Hello from the room"}]},"transcript":{"mode":"merge","items":["Model summarized the room."]}}
+{"hud":{"mode":"merge","fields":{"current_date_local":"2026-03-28"}},"content":{"mode":"merge","items":[{"label":"room_title","field_class":"display_text","trust":"untrusted","value":"Main Room"},{"label":"latest_message","field_class":"message_text","trust":"untrusted","value":"Hello from the room"},{"label":"status","field_class":"status_text","trust":"trusted","value":"stable"}]},"transcript":{"mode":"merge","items":["Older residue","Model summarized the room.","Newest residue"]}}
 </CONTEXTGATE_UPDATE>
 """.strip()
 

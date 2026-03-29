@@ -226,3 +226,52 @@ def test_transcript_policy_supports_dedupe_and_limit() -> None:
     )
 
     assert gate.active_transcript == ["Latest residue", "Newest residue"]
+
+
+def test_content_policy_can_reject_overflow() -> None:
+    gate = ContextGate(content_limit=1, content_overflow="reject")
+
+    try:
+        gate.apply_update(
+            {
+                "content": {
+                    "mode": "merge",
+                    "items": [
+                        {
+                            "label": "room_title",
+                            "field_class": "display_text",
+                            "trust": "untrusted",
+                            "value": "Main Room",
+                        },
+                        {
+                            "label": "latest_message",
+                            "field_class": "message_text",
+                            "trust": "untrusted",
+                            "value": "Hello",
+                        },
+                    ],
+                }
+            }
+        )
+    except ValueError as exc:
+        assert "Content limit exceeded" in str(exc)
+    else:
+        raise AssertionError("Expected overflow rejection")
+
+
+def test_transcript_policy_can_reject_overflow() -> None:
+    gate = ContextGate(transcript_limit=1, transcript_overflow="reject")
+
+    try:
+        gate.apply_update(
+            {
+                "transcript": {
+                    "mode": "merge",
+                    "items": ["Older residue", "Newest residue"],
+                }
+            }
+        )
+    except ValueError as exc:
+        assert "Transcript limit exceeded" in str(exc)
+    else:
+        raise AssertionError("Expected overflow rejection")

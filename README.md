@@ -57,8 +57,14 @@ gate = cg.ContextGate(
     transcript_limit=50,
     dedupe_content=True,
     dedupe_transcript=True,
+    content_overflow="truncate",
+    transcript_overflow="truncate",
 )
 ```
+
+Overflow policies:
+- `truncate`: keep the newest tail within the configured limit
+- `reject`: fail when the merged state would exceed the configured limit
 
 Important constraint:
 - `extract_update` should read only a strict structured update channel
@@ -134,6 +140,8 @@ Optional constructor policies can also keep merged state compact:
 - `transcript_limit`
 - `dedupe_content`
 - `dedupe_transcript`
+- `content_overflow`
+- `transcript_overflow`
 
 Allowed `field_class` values for content items:
 - `display_text`
