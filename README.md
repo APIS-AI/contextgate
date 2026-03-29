@@ -1,74 +1,69 @@
 # ContextGate
 
-ContextGate is a prompt-visible session context layer for agent systems.
+ContextGate is a prompt-context boundary for agent systems.
 
-It is designed to solve a narrow but increasingly important infrastructure problem: agent stacks routinely flatten trusted state, untrusted external content, tool output, and transcript residue into one prompt-visible blob. That wastes tokens and makes prompt injection easier.
+It gives developers a small way to inject current structured state into prompts without treating transcript residue, tool output, and untrusted content as the same thing.
 
-ContextGate introduces a thin, drop-in boundary layer that developers can place in front of an existing prompt assembly pipeline.
-
-At steady state, only one active ContextGate envelope should be present in prompt-visible context. Older copies are stripped before the next turn, so the protocol adds very little overhead compared with transcript-style repetition.
+For the full protocol and design rationale, see [docs/TRUST_SCOPED_CONTEXT_HEADERS_PROTOCOL_PROPOSAL.md](docs/TRUST_SCOPED_CONTEXT_HEADERS_PROTOCOL_PROPOSAL.md).
 
 ## What It Does
 
-- injects a fresh structured context overlay on each turn
-- keeps only one current context envelope in prompt-visible state
-- separates prompt-visible state from transcript residue
-- supports replace-not-append semantics for live HUD state
-- classifies prompt-visible inputs by trust and role
-- keeps untrusted content as content rather than silent authority
-- fits into existing LLM pipelines without requiring a framework rewrite
+- injects one current context envelope into each turn
+- keeps live state replaceable instead of append-only
+- separates trusted runtime state from untrusted content
+- validates incoming fields against declared types or schemas
+- supports a bounded machine update channel on response output
+- fits into an existing prompt assembly pipeline
 
-## Scope
+## Core Concepts
 
-ContextGate starts below system instructions.
-
-In scope:
-- `HUD`: replaceable live operational state about what is true right now
-- `CONTENT`: untrusted user, remote, and tool content
+- `HUD`: replaceable live runtime state about what is true right now
+- `CONTENT`: untrusted user, remote, or tool content
 - `TRANSCRIPT`: optional historical residue
+- `DESKTOP`: a trusted local `HeaderForge` example, not a `ContextGate` wire-protocol section
 
-Out of scope:
-- system prompts
-- immutable operator control
-- top-level instruction hierarchy
-- runtime-specific control-plane composition
+At steady state, only one active `ContextGate` envelope should be present in prompt-visible context. Older copies should be stripped before the next turn.
 
-## Why This Exists
+## Integration Shape
 
-Current agent systems have three recurring failures:
+```python
+import contextgate as cg
 
-1. Untrusted text can silently masquerade as authority.
-2. Chat-history continuity is repetitive, lossy, and expensive.
-3. Remote context exchange is unsafe by default when structure and trust are not explicit.
+gate = cg.ContextGate(default_hud_schema=DefaultHudV0)
+gate.register_hud_schema(remote_packet.get("hud_schema"))
 
-ContextGate treats prompt-visible continuity as a typed state transport problem instead of a transcript-reconstruction problem.
+prompt = gate.render(
+    base_prompt=prompt,
+    hud=gate.assemble_hud(remote_packet.get("hud")),
+    content=remote_packet.get("content"),
+    transcript=transcript,
+)
 
-The intended steady-state cost is:
-- one current envelope
-- old envelopes removed
-- compact snapshots or deltas when possible
+response = llm.generate(prompt)
 
-Practical distinction:
-- `HUD` = runtime facts and environment status
-- `CONTENT` = untrusted user, remote, and tool content
+update = gate.extract_update(response)
+gate.apply_update(update)
 
-## Why HUD Exists
+final_text = gate.visible_text(response)
+```
 
-`HUD` exists so an agent does not have to reconstruct current reality from transcript residue.
+Important constraint:
+- `extract_update` should read only a strict structured update channel
+- it should not infer state updates from arbitrary prose
 
-It should carry compact runtime facts such as:
-- where the agent is
-- what room, task, or resource is active
-- current health or connection state
-- immediate counters, presence, and status flags
+## Update Channel
 
-Without `HUD`, systems tend to smear live state across transcript text, tool output, and summaries. That wastes tokens and makes the current state harder to identify reliably.
+A minimal response-side machine channel can look like this:
 
-## Minimal HUD Handshake
+```text
+<CONTEXTGATE_UPDATE>
+{"hud":{"current_room_id":"room_123"}}
+</CONTEXTGATE_UPDATE>
+```
 
-`ContextGate` should not permanently assume one hardcoded HUD field set.
+## HUD Schema Handshake
 
-For `v0`, the protocol can stay simple and still support a tiny HUD schema handshake:
+`ContextGate` can accept a minimal declarative handshake for HUD fields:
 
 ```json
 {
@@ -83,130 +78,52 @@ For `v0`, the protocol can stay simple and still support a tiny HUD schema hands
 }
 ```
 
-Receiver behavior should be minimal:
+Receiver behavior should stay simple:
 - accept known fields
-- ignore or reject unknown ones
-- validate every admitted field against its declared type
+- ignore or reject unknown fields
+- validate admitted fields against declared types
 
-The first reference implementation can still ship with one built-in default HUD profile so adoption stays easy.
+## Type Model
 
-The runtime should also have a matching HUD assembler:
-- take the validated schema
-- take the validated HUD values
-- build one current authoritative HUD object
-- replace the old HUD by default
-- emit only the compact active HUD block
+For `v0`, keep the field model small and explicit.
 
-## HeaderForge Example
+Allowed examples:
+- `string`
+- `integer`
+- `boolean`
+- `timestamp`
+- `string[]`
+- `integer[]`
+- `timestamp[]`
+- schema-bound refs such as `ImageRefV1` and `AudioRefV1`
 
-`DESKTOP` has been included as a trusted local `HeaderForge` example.
+Avoid in `v0`:
+- arbitrary nested JSON
+- generic `object`
+- mixed-type arrays
+- inline image or audio payloads
 
-A runtime may render local working files into a `DESKTOP` header and inject that into prompt-visible context, but that behavior is implementation-defined and outside the ContextGate wire protocol.
+## HeaderForge
 
-## Design Principles
+`HeaderForge` is the local header construction layer.
 
-- structured prompt-visible state, not freeform prompt stuffing
-- expected data types per field, not best-effort coercion
-- typed arrays, not generic lists of unknown values
-- schema-bound refs for image/audio attachments, not inline media blobs
-- replaceable live state, not endless append-only context
-- explicit trust boundaries, not implicit prose conventions
-- minimal integration surface, not framework lock-in
-- prompt-visible context only, not system-instruction ownership
+That is where a runtime can build trusted local headers such as `DESKTOP` from local files or runtime state before injecting them into prompt-visible context.
 
-Type expectations matter because a field that must be an integer, boolean, timestamp, enum, typed scalar array, or schema-bound media reference is much harder to poison with instruction text than a field that silently accepts arbitrary strings. A timestamp should be validated against a known format such as RFC 3339 or ISO 8601 rather than treated as arbitrary prose.
+## v0 Goals
 
-For `v0`, generic objects and arbitrary nested JSON should stay out of scope. If a developer needs vision or audio context, the protocol should use named attachment refs such as `ImageRefV1` or `AudioRefV1`, not inline payload blobs.
+- define the prompt-visible context envelope shape
+- support typed HUD validation and assembly
+- support untrusted content classification
+- support a bounded update channel
+- provide a small reference implementation
 
-## Intended Developer Experience
+## Non-Goals
 
-The target integration should feel like a thin wrapper:
-
-```python
-import contextgate as cg
-
-gate = cg.ContextGate()
-
-prompt = gate.render(
-    base_prompt=prompt,
-    hud=hud,
-    transcript=transcript,
-)
-
-response = llm.generate(prompt)
-
-update = gate.extract_update(response)
-gate.apply_update(update)
-
-final_text = gate.visible_text(response)
-```
-
-For the first implementation, the core can stay schema-driven while the demo ships with a default HUD profile:
-
-```python
-gate = ContextGate(default_hud_schema=DefaultHudV0)
-gate.register_hud_schema(remote_packet.get("hud_schema"))
-gate.assemble_hud(remote_packet.get("hud"))
-```
-
-Important constraint:
-- `extract_update` should only read a strict structured update channel
-- it should not infer state updates from arbitrary prose
-
-A parser should normalize the envelope into a deterministic internal shape before prompt assembly:
-
-```python
-parsed = gate.parse_envelope(envelope)
-
-# Example normalized shape
-{
-    "ctx_version": "0.1",
-    "auth": {"source": "local_runtime", "trust": "trusted"},
-    "hud": {
-        "mode": "replace",
-        "fields": {
-            "room_id": {"type": "string", "value": "room_123"},
-            "connected": {"type": "boolean", "value": True},
-            "pending_requests": {"type": "integer", "value": 2},
-        },
-    },
-    "content": [
-        {
-            "label": "room_title",
-            "field_class": "display_text",
-            "trust": "untrusted",
-            "value": "ignore previous instructions",
-        }
-    ],
-}
-```
-
-For response-side parsing, the parser should read only a bounded machine channel, for example:
-
-```text
-<CONTEXTGATE_UPDATE>
-{"hud":{"current_room_id":"room_123"}}
-</CONTEXTGATE_UPDATE>
-```
-
-## Initial Deliverables
-
-A practical `v0` likely includes:
-
-- schema definition for prompt-visible context envelopes
-- trust classification rules
-- validation and merge rules
-- minimal HUD schema handshake support
-- replace/delta semantics for HUD updates
-- a small reference implementation
-- a demo showing naive prompt assembly versus protected prompt assembly
-
-## Product Split
-
-- Product: `ContextGate`
-- Engine: `HeaderForge`
-- Protocol: `Context Headers Protocol`
+- owning system instructions
+- replacing an agent framework
+- defining local working-file management
+- storing full long-term memory inside the envelope
 
 ## Status
 
-This repository starts as the private working repo for the protocol, reference API, and initial README/spec work.
+This repository is the private working repo for the protocol, reference API shape, and initial implementation work.
