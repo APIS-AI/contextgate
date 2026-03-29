@@ -526,6 +526,43 @@ def test_cli_reports_diff_json_after_apply(tmp_path, monkeypatch, capsys) -> Non
     assert '"transcript":{"added":["Newest residue"],"removed":[]}' in captured.err
 
 
+def test_cli_reports_hud_only_diff_scope_after_apply(tmp_path, monkeypatch, capsys) -> None:
+    state_path = tmp_path / "state.json"
+    state_path.write_text(
+        json.dumps(
+            {
+                "ctx_version": "0.1",
+                "auth": {"source": "local_runtime", "trust": "trusted"},
+                "hud": {"mode": "replace", "fields": {"participant_count": 2}},
+                "content": [],
+                "transcript": [],
+            }
+        )
+    )
+    response = """Summary: Room updated.
+<CONTEXTGATE_UPDATE>{"hud":{"mode":"merge","fields":{"participant_count":5}},"content":{"mode":"merge","items":[{"label":"latest_message","field_class":"message_text","trust":"untrusted","value":"Hello"}]}}</CONTEXTGATE_UPDATE>"""
+    monkeypatch.setattr("sys.stdin", StringIO(response))
+
+    assert (
+        main(
+            [
+                "--apply-update",
+                "--state",
+                str(state_path),
+                "--stdout",
+                "visible-text",
+                "--report-diff",
+                "hud",
+            ]
+        )
+        == 0
+    )
+    captured = capsys.readouterr()
+    assert 'contextgate: diff-json {"hud":{"changed_fields":{"participant_count":{"after":5,"before":2}},"removed_fields":[]}}' in captured.err
+    assert '"content"' not in captured.err
+    assert '"transcript"' not in captured.err
+
+
 def test_cli_rejects_report_diff_without_apply_update(tmp_path, capsys) -> None:
     envelope_path = tmp_path / "envelope.json"
     envelope_path.write_text(

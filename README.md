@@ -301,6 +301,7 @@ cat model_output.txt | contextgate --apply-update --state state.json --write-sta
 contextgate event.json --update --read-update-from-field event.assistant_text
 cat model_output.txt | contextgate --apply-update --state state.json --write-state state.json --stdout visible-text --stderr update-json
 cat model_output.txt | contextgate --apply-update --state state.json --stdout visible-text --stderr all --report-diff
+cat model_output.txt | contextgate --apply-update --state state.json --stdout visible-text --report-diff hud
 ```
 
 The CLI can:
@@ -333,7 +334,7 @@ Policy flags supported by `--apply-update`:
 - `--read-update-from-field`
 - `--stdout json|render|visible-text`
 - `--stderr update-json|all`
-- `--report-diff`
+- `--report-diff [all|hud|content|transcript]`
 
 Example `reject` path:
 
@@ -398,6 +399,14 @@ cat model_output.txt | contextgate --apply-update --state state.json --stdout vi
 ```
 
 That emits visible assistant text to stdout while sending validated update JSON, size data, and a structured before/after diff to stderr.
+
+Example scoped diff flow for a CLI agent:
+
+```bash
+cat model_output.txt | contextgate --apply-update --state state.json --stdout visible-text --report-diff hud
+```
+
+That limits stderr diff output to the HUD section only.
 
 For `v0`, update-channel validation is intentionally strict:
 - only supported top-level sections are accepted

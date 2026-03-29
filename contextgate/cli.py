@@ -88,7 +88,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--report-diff",
-        action="store_true",
+        nargs="?",
+        const="all",
+        choices=("all", "hud", "content", "transcript"),
         help="Print a structured before/after diff to stderr after --apply-update succeeds.",
     )
     parser.add_argument(
@@ -295,6 +297,12 @@ def emit_diff_json(diff: dict[str, Any]) -> None:
     )
 
 
+def select_diff_scope(diff: dict[str, Any], scope: str) -> dict[str, Any]:
+    if scope == "all":
+        return diff
+    return {scope: diff[scope]}
+
+
 def resolve_stdout_mode(args: argparse.Namespace) -> str:
     if args.stdout:
         return args.stdout
@@ -363,7 +371,7 @@ def main(argv: list[str] | None = None) -> int:
         if state_diff is None:
             print("contextgate: --report-diff requires --apply-update", file=sys.stderr)
             return 1
-        emit_diff_json(state_diff)
+        emit_diff_json(select_diff_scope(state_diff, args.report_diff))
 
     if args.write_state and isinstance(normalized, dict):
         write_state(args.write_state, normalized)
