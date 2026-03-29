@@ -101,6 +101,12 @@ def validate_type_value(expected_type: str, value: Any) -> Any:
 
 
 def validate_schema_value(expected_schema: str, value: Any) -> Any:
+    if expected_schema.endswith("[]"):
+        if not isinstance(value, list):
+            raise ValidationError(f"Expected list for {expected_schema}")
+        inner_schema = expected_schema[:-2]
+        return [validate_schema_value(inner_schema, item) for item in value]
+
     if expected_schema == "ImageRefV1":
         return _validate_record(expected_schema, value, REQUIRED_IMAGE_REF_FIELDS)
     if expected_schema == "AudioRefV1":

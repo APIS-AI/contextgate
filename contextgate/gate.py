@@ -27,7 +27,7 @@ class ContextGate:
         self.active_hud = assemble_hud(hud_values, self.default_hud_schema)
         return self.active_hud
 
-    def parse_envelope(self, envelope: dict[str, Any]) -> dict[str, Any]:
+    def parse_envelope(self, envelope: dict[str, Any] | str) -> dict[str, Any]:
         return parse_envelope(envelope, default_hud_schema=self.default_hud_schema)
 
     def build_envelope(
@@ -57,6 +57,7 @@ class ContextGate:
         content: list[dict[str, Any]] | None = None,
         transcript: list[str] | None = None,
         auth: dict[str, Any] | None = None,
+        compact: bool = False,
     ) -> str:
         envelope = self.build_envelope(
             hud=hud,
@@ -64,12 +65,17 @@ class ContextGate:
             transcript=transcript,
             auth=auth,
         )
+        json_kwargs = {"sort_keys": True}
+        if compact:
+            payload = json.dumps(envelope, separators=(",", ":"), **json_kwargs)
+        else:
+            payload = json.dumps(envelope, indent=2, **json_kwargs)
         return "\n".join(
             [
                 base_prompt.rstrip(),
                 "",
                 "<CONTEXTGATE_ENVELOPE>",
-                json.dumps(envelope, indent=2, sort_keys=True),
+                payload,
                 "</CONTEXTGATE_ENVELOPE>",
             ]
         )
@@ -80,9 +86,26 @@ class ContextGate:
     def apply_update(self, update: dict[str, Any] | None) -> None:
         if not update:
             return
-        hud = update.get("hud")
-        if isinstance(hud, dict):
-            self.assemble_hud(hud)
+        raw_hud = update.get("hud")
+        if not isinstance(raw_hud, dict):
+            return
+
+        if "fields" in raw_hud and isinstance(raw_hud.get("fields"), dict):
+            mode = raw_hud.get("mode", "replace")
+            hud_values = raw_hud["fields"]
+        else:
+            mode = "replace"
+            hud_values = raw_hud
+
+        normalized = assemble_hud(hud_values, self.default_hud_schema)
+        if mode == "merge":
+            merged_fields = dict(self.active_hud.get("fields", {}))
+            merged_fields.update(normalized["fields"])
+            self.active_hud = {"mode": "replace", "fields": merged_fields}
+            return
+        if mode != "replace":
+            raise ValueError(f"Unsupported HUD update mode: {mode}")
+        self.active_hud = normalized
 
     def visible_text(self, response: str) -> str:
         return strip_update(response)

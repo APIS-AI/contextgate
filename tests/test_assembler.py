@@ -98,3 +98,30 @@ def test_assemble_hud_rejects_invalid_audio_ref() -> None:
         assert "duration_ms" in str(exc)
     else:
         raise AssertionError("Expected ValidationError")
+
+
+def test_assemble_hud_validates_schema_bound_image_ref_list() -> None:
+    schema = HudSchema(
+        version="v0",
+        fields={"recent_screenshots": FieldSpec(expected_schema="ImageRefV1[]")},
+    )
+
+    hud = assemble_hud(
+        {
+            "recent_screenshots": [
+                {
+                    "uri": "file:///tmp/one.png",
+                    "mime_type": "image/png",
+                    "sha256": "abc123",
+                },
+                {
+                    "uri": "file:///tmp/two.png",
+                    "mime_type": "image/png",
+                    "sha256": "def456",
+                },
+            ]
+        },
+        schema,
+    )
+
+    assert len(hud["fields"]["recent_screenshots"]) == 2

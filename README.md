@@ -37,6 +37,7 @@ prompt = gate.render(
     hud=gate.assemble_hud(remote_packet.get("hud")),
     content=remote_packet.get("content"),
     transcript=transcript,
+    compact=True,
 )
 
 response = llm.generate(prompt)
@@ -57,17 +58,25 @@ Important constraint:
 
 ```text
 <CONTEXTGATE_ENVELOPE>
-{
-  "ctx_version": "0.1",
-  "auth": {"source": "local_runtime", "trust": "trusted"},
-  "hud": {"mode": "replace", "fields": {"current_room_id": "room_123"}},
-  "content": [{"label": "room_title", "trust": "untrusted", "value": "Main Room"}],
-  "transcript": ["Older residue"]
-}
+{"auth":{"source":"local_runtime","trust":"trusted"},"content":[],"ctx_version":"0.1","hud":{"fields":{"current_room_id":"room_123"},"mode":"replace"},"transcript":[]}
 </CONTEXTGATE_ENVELOPE>
 ```
 
 The parser can consume either a Python envelope object or the exact rendered block from prompt text.
+
+## Update Modes
+
+HUD updates can be applied in two explicit modes:
+- `replace`: replace the current authoritative HUD block
+- `merge`: validate the incoming fields and merge them into the current HUD block
+
+Example merge update:
+
+```text
+<CONTEXTGATE_UPDATE>
+{"hud":{"mode":"merge","fields":{"participant_count":5}}}
+</CONTEXTGATE_UPDATE>
+```
 
 ## Update Channel
 
@@ -113,7 +122,7 @@ Allowed examples:
 - `string[]`
 - `integer[]`
 - `timestamp[]`
-- schema-bound refs such as `ImageRefV1` and `AudioRefV1`
+- schema-bound refs such as `ImageRefV1`, `AudioRefV1`, `ImageRefV1[]`, and `AudioRefV1[]`
 
 Avoid in `v0`:
 - arbitrary nested JSON
@@ -157,6 +166,19 @@ This field should be rejected because the declared type is `integer` but the val
 
 That should fail validation instead of being coerced or treated as ordinary prose.
 
+## Trusted HUD Example
+
+For a concrete trusted HUD example sourced from the local OS, see:
+- `examples/trusted_hud_from_os.py`
+
+That example shows useful runtime facts an agent may actually need:
+- current local time
+- current local date
+- timezone
+- hostname
+- platform
+- current working directory
+
 ## HeaderForge
 
 `HeaderForge` is the local header construction layer.
@@ -176,6 +198,9 @@ contextgate/
 
 demo/
   basic_flow.py
+
+examples/
+  trusted_hud_from_os.py
 
 tests/
   test_parser.py
