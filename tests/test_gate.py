@@ -100,3 +100,56 @@ def test_apply_update_replaces_active_content_and_transcript() -> None:
     envelope = json.loads(payload)
     assert envelope["content"][0]["value"] == "Main Room"
     assert envelope["transcript"] == ["Older residue"]
+
+
+def test_apply_update_supports_merge_mode_for_content_and_transcript() -> None:
+    gate = ContextGate()
+    gate.apply_update(
+        {
+            "content": [
+                {
+                    "label": "room_title",
+                    "field_class": "display_text",
+                    "trust": "untrusted",
+                    "value": "Main Room",
+                }
+            ],
+            "transcript": ["Older residue"],
+        }
+    )
+
+    gate.apply_update(
+        {
+            "content": {
+                "mode": "merge",
+                "items": [
+                    {
+                        "label": "latest_message",
+                        "field_class": "message_text",
+                        "trust": "untrusted",
+                        "value": "Hello",
+                    }
+                ],
+            },
+            "transcript": {
+                "mode": "merge",
+                "items": ["Latest residue"],
+            },
+        }
+    )
+
+    assert gate.active_content == [
+        {
+            "label": "room_title",
+            "field_class": "display_text",
+            "trust": "untrusted",
+            "value": "Main Room",
+        },
+        {
+            "label": "latest_message",
+            "field_class": "message_text",
+            "trust": "untrusted",
+            "value": "Hello",
+        },
+    ]
+    assert gate.active_transcript == ["Older residue", "Latest residue"]

@@ -78,6 +78,26 @@ Example merge update:
 </CONTEXTGATE_UPDATE>
 ```
 
+Content and transcript updates also support explicit modes:
+- `replace`: replace the active list
+- `merge`: append new items to the active list
+
+Example content merge update:
+
+```text
+<CONTEXTGATE_UPDATE>
+{"content":{"mode":"merge","items":[{"label":"room_title","field_class":"display_text","trust":"untrusted","value":"Main Room"}]}}
+</CONTEXTGATE_UPDATE>
+```
+
+Example transcript merge update:
+
+```text
+<CONTEXTGATE_UPDATE>
+{"transcript":{"mode":"merge","items":["Older residue"]}}
+</CONTEXTGATE_UPDATE>
+```
+
 ## Update Channel
 
 A minimal response-side machine channel can look like this:
@@ -93,8 +113,9 @@ Supported `v0` update sections:
 - `content`
 - `transcript`
 
-`content` updates are replace-only lists of normalized content records.
-`transcript` updates are replace-only lists of strings.
+`content` and `transcript` support:
+- legacy replace syntax via a direct list
+- explicit mode syntax via `{ "mode": "replace" | "merge", "items": [...] }`
 
 ## HUD Schema Handshake
 
@@ -201,6 +222,9 @@ That example supports:
 For a full prompt assembly example combining trusted `DESKTOP`, trusted `HUD`, and untrusted `CONTENT`, see:
 - `examples/end_to_end_prompt_assembly.py`
 
+For a compact accepted/rejected update payload tour, see:
+- `examples/update_payloads.py`
+
 ## CLI Helper
 
 A small CLI is included to validate and normalize envelopes from a file or stdin:
@@ -221,8 +245,12 @@ For `v0`, update-channel validation is intentionally strict:
 - HUD updates must use either:
   - a legacy direct field object
   - or `{ "mode": "replace" | "merge", "fields": { ... } }`
-- `content` must be a list of `{ label, field_class, trust, value }` records
-- `transcript` must be a list of strings
+- `content` must be either:
+  - a direct list of `{ label, field_class, trust, value }` records
+  - or `{ "mode": "replace" | "merge", "items": [...] }`
+- `transcript` must be either:
+  - a direct list of strings
+  - or `{ "mode": "replace" | "merge", "items": [...] }`
 
 Allowed vs rejected examples:
 
@@ -231,9 +259,12 @@ Allowed vs rejected examples:
 | `{"hud":{"participant_count":5}}` | accepted |
 | `{"hud":{"mode":"merge","fields":{"participant_count":5}}}` | accepted |
 | `{"content":[{"label":"room_title","field_class":"display_text","trust":"untrusted","value":"Main Room"}]}` | accepted |
+| `{"content":{"mode":"merge","items":[{"label":"room_title","field_class":"display_text","trust":"untrusted","value":"Main Room"}]}}` | accepted |
 | `{"transcript":["Older residue"]}` | accepted |
+| `{"transcript":{"mode":"merge","items":["Older residue"]}}` | accepted |
 | `{"desktop":{"note":"local only"}}` | rejected |
 | `{"hud":{"mode":"append","fields":{"participant_count":5}}}` | rejected |
+| `{"content":{"mode":"append","items":[]}}` | rejected |
 | `{"transcript":["ok",5]}` | rejected |
 
 Example rejected update:
@@ -271,6 +302,7 @@ examples/
   trusted_hud_from_os.py
   headerforge_desktop_from_files.py
   end_to_end_prompt_assembly.py
+  update_payloads.py
   rejected_malicious_update.py
 
 tests/

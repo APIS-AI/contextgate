@@ -57,7 +57,7 @@ def _validate_hud_update(
         raise UpdateChannelError(str(exc)) from exc
 
 
-def _validate_content_update(payload: Any) -> list[dict[str, str]]:
+def _normalize_content_items(payload: Any) -> list[dict[str, str]]:
     if not isinstance(payload, list):
         raise UpdateChannelError("Content update payload must be a list")
 
@@ -90,12 +90,46 @@ def _validate_content_update(payload: Any) -> list[dict[str, str]]:
     return normalized
 
 
-def _validate_transcript_update(payload: Any) -> list[str]:
+def _validate_content_update(payload: Any) -> dict[str, Any] | list[dict[str, str]]:
+    if isinstance(payload, dict):
+        mode = payload.get("mode", "replace")
+        items = payload.get("items")
+        if mode not in {"replace", "merge"}:
+            raise UpdateChannelError("Content update mode must be replace or merge")
+        if "items" not in payload:
+            raise UpdateChannelError("Content update mode requires an items list")
+        extra_keys = set(payload) - {"mode", "items"}
+        if extra_keys:
+            names = ", ".join(sorted(extra_keys))
+            raise UpdateChannelError(f"Unsupported content update keys: {names}")
+        return {"mode": mode, "items": _normalize_content_items(items)}
+
+    return _normalize_content_items(payload)
+
+
+def _normalize_transcript_items(payload: Any) -> list[str]:
     if not isinstance(payload, list):
         raise UpdateChannelError("Transcript update payload must be a list")
     if not all(isinstance(item, str) for item in payload):
         raise UpdateChannelError("Transcript update items must be strings")
     return list(payload)
+
+
+def _validate_transcript_update(payload: Any) -> dict[str, Any] | list[str]:
+    if isinstance(payload, dict):
+        mode = payload.get("mode", "replace")
+        items = payload.get("items")
+        if mode not in {"replace", "merge"}:
+            raise UpdateChannelError("Transcript update mode must be replace or merge")
+        if "items" not in payload:
+            raise UpdateChannelError("Transcript update mode requires an items list")
+        extra_keys = set(payload) - {"mode", "items"}
+        if extra_keys:
+            names = ", ".join(sorted(extra_keys))
+            raise UpdateChannelError(f"Unsupported transcript update keys: {names}")
+        return {"mode": mode, "items": _normalize_transcript_items(items)}
+
+    return _normalize_transcript_items(payload)
 
 
 def validate_update_payload(

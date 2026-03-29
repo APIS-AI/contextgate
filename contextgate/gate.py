@@ -111,10 +111,34 @@ class ContextGate:
                 self.active_hud = normalized
 
         if "content" in update:
-            self.active_content = list(update["content"])
+            raw_content = update["content"]
+            if isinstance(raw_content, dict):
+                content_mode = raw_content.get("mode", "replace")
+                content_items = list(raw_content.get("items", []))
+                if content_mode == "merge":
+                    self.active_content.extend(content_items)
+                else:
+                    if content_mode != "replace":
+                        raise ValueError(f"Unsupported content update mode: {content_mode}")
+                    self.active_content = content_items
+            else:
+                self.active_content = list(raw_content)
 
         if "transcript" in update:
-            self.active_transcript = list(update["transcript"])
+            raw_transcript = update["transcript"]
+            if isinstance(raw_transcript, dict):
+                transcript_mode = raw_transcript.get("mode", "replace")
+                transcript_items = list(raw_transcript.get("items", []))
+                if transcript_mode == "merge":
+                    self.active_transcript.extend(transcript_items)
+                else:
+                    if transcript_mode != "replace":
+                        raise ValueError(
+                            f"Unsupported transcript update mode: {transcript_mode}"
+                        )
+                    self.active_transcript = transcript_items
+            else:
+                self.active_transcript = list(raw_transcript)
 
     def visible_text(self, response: str) -> str:
         return strip_update(response)

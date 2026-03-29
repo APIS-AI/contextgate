@@ -72,12 +72,45 @@ def test_extract_update_accepts_content_and_transcript_sections() -> None:
     }
 
 
+def test_extract_update_accepts_modeful_content_and_transcript_sections() -> None:
+    response = """Visible text
+<CONTEXTGATE_UPDATE>
+{"content":{"mode":"merge","items":[{"label":"room_title","field_class":"display_text","trust":"untrusted","value":"Main Room"}]},"transcript":{"mode":"merge","items":["Older residue"]}}
+</CONTEXTGATE_UPDATE>"""
+    parsed = extract_update(response)
+
+    assert parsed == {
+        "content": {
+            "mode": "merge",
+            "items": [
+                {
+                    "label": "room_title",
+                    "field_class": "display_text",
+                    "trust": "untrusted",
+                    "value": "Main Room",
+                }
+            ],
+        },
+        "transcript": {"mode": "merge", "items": ["Older residue"]},
+    }
+
+
 def test_extract_update_rejects_invalid_transcript_items() -> None:
     response = 'Visible text\n<CONTEXTGATE_UPDATE>{"transcript":["ok",5]}</CONTEXTGATE_UPDATE>'
     try:
         extract_update(response)
     except UpdateChannelError as exc:
         assert "must be strings" in str(exc)
+    else:
+        raise AssertionError("Expected UpdateChannelError")
+
+
+def test_extract_update_rejects_invalid_content_mode() -> None:
+    response = 'Visible text\n<CONTEXTGATE_UPDATE>{"content":{"mode":"append","items":[]}}</CONTEXTGATE_UPDATE>'
+    try:
+        extract_update(response)
+    except UpdateChannelError as exc:
+        assert "Content update mode must be replace or merge" in str(exc)
     else:
         raise AssertionError("Expected UpdateChannelError")
 

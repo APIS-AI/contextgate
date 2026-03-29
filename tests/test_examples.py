@@ -33,3 +33,18 @@ def test_rejected_malicious_update_example_runs() -> None:
 
     assert "Rejected update:" in result.stdout
     assert "Unsupported update sections" in result.stdout
+
+
+def test_update_payloads_example_runs() -> None:
+    result = subprocess.run(
+        [sys.executable, "examples/update_payloads.py"],
+        cwd=REPO_ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    assert "accepted_hud_merge: accepted" in result.stdout
+    assert "accepted_content_merge: accepted" in result.stdout
+    assert "accepted_transcript_merge: accepted" in result.stdout
+    assert "rejected_local_desktop: rejected" in result.stdout
