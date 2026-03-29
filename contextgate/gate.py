@@ -10,11 +10,23 @@ from .update_channel import extract_update, strip_update
 
 
 class ContextGate:
-    def __init__(self, default_hud_schema: HudSchema | dict[str, Any] | None = None) -> None:
+    def __init__(
+        self,
+        default_hud_schema: HudSchema | dict[str, Any] | None = None,
+        *,
+        content_limit: int | None = None,
+        transcript_limit: int | None = None,
+        dedupe_content: bool = False,
+        dedupe_transcript: bool = False,
+    ) -> None:
         if isinstance(default_hud_schema, dict):
             self.default_hud_schema = parse_hud_schema(default_hud_schema)
         else:
             self.default_hud_schema = default_hud_schema
+        self.content_limit = content_limit
+        self.transcript_limit = transcript_limit
+        self.dedupe_content = dedupe_content
+        self.dedupe_transcript = dedupe_transcript
         self.active_hud: dict[str, Any] = {"mode": "replace", "fields": {}}
         self.active_content: list[dict[str, Any]] = []
         self.active_transcript: list[str] = []
@@ -47,9 +59,44 @@ class ContextGate:
                 "trust": (auth or {}).get("trust", "trusted"),
             },
             "hud": hud if hud is not None else dict(self.active_hud),
-            "content": content if content is not None else list(self.active_content),
-            "transcript": transcript if transcript is not None else list(self.active_transcript),
+            "content": self._apply_content_policy(content if content is not None else self.active_content),
+            "transcript": self._apply_transcript_policy(
+                transcript if transcript is not None else self.active_transcript
+            ),
         }
+
+    def _apply_content_policy(
+        self, items: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
+        normalized = list(items)
+        if self.dedupe_content:
+            deduped: list[dict[str, Any]] = []
+            seen: set[str] = set()
+            for item in normalized:
+                marker = json.dumps(item, sort_keys=True)
+                if marker in seen:
+                    continue
+                seen.add(marker)
+                deduped.append(item)
+            normalized = deduped
+        if self.content_limit is not None:
+            normalized = normalized[-self.content_limit :]
+        return normalized
+
+    def _apply_transcript_policy(self, items: list[str]) -> list[str]:
+        normalized = list(items)
+        if self.dedupe_transcript:
+            deduped: list[str] = []
+            seen: set[str] = set()
+            for item in normalized:
+                if item in seen:
+                    continue
+                seen.add(item)
+                deduped.append(item)
+            normalized = deduped
+        if self.transcript_limit is not None:
+            normalized = normalized[-self.transcript_limit :]
+        return normalized
 
     def render(
         self,
@@ -123,6 +170,7 @@ class ContextGate:
                     self.active_content = content_items
             else:
                 self.active_content = list(raw_content)
+            self.active_content = self._apply_content_policy(self.active_content)
 
         if "transcript" in update:
             raw_transcript = update["transcript"]
@@ -139,6 +187,7 @@ class ContextGate:
                     self.active_transcript = transcript_items
             else:
                 self.active_transcript = list(raw_transcript)
+            self.active_transcript = self._apply_transcript_policy(self.active_transcript)
 
     def visible_text(self, response: str) -> str:
         return strip_update(response)

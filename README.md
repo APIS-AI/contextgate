@@ -48,6 +48,18 @@ gate.apply_update(update)
 final_text = gate.visible_text(response)
 ```
 
+Optional state-growth controls:
+
+```python
+gate = cg.ContextGate(
+    default_hud_schema=DefaultHudV0,
+    content_limit=20,
+    transcript_limit=50,
+    dedupe_content=True,
+    dedupe_transcript=True,
+)
+```
+
 Important constraint:
 - `extract_update` should read only a strict structured update channel
 - it should not infer state updates from arbitrary prose
@@ -116,6 +128,12 @@ Supported `v0` update sections:
 `content` and `transcript` support:
 - legacy replace syntax via a direct list
 - explicit mode syntax via `{ "mode": "replace" | "merge", "items": [...] }`
+
+Optional constructor policies can also keep merged state compact:
+- `content_limit`
+- `transcript_limit`
+- `dedupe_content`
+- `dedupe_transcript`
 
 Allowed `field_class` values for content items:
 - `display_text`

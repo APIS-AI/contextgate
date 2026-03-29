@@ -153,3 +153,76 @@ def test_apply_update_supports_merge_mode_for_content_and_transcript() -> None:
         },
     ]
     assert gate.active_transcript == ["Older residue", "Latest residue"]
+
+
+def test_content_policy_supports_dedupe_and_limit() -> None:
+    gate = ContextGate(content_limit=2, dedupe_content=True)
+
+    gate.apply_update(
+        {
+            "content": {
+                "mode": "merge",
+                "items": [
+                    {
+                        "label": "room_title",
+                        "field_class": "display_text",
+                        "trust": "untrusted",
+                        "value": "Main Room",
+                    },
+                    {
+                        "label": "room_title",
+                        "field_class": "display_text",
+                        "trust": "untrusted",
+                        "value": "Main Room",
+                    },
+                    {
+                        "label": "latest_message",
+                        "field_class": "message_text",
+                        "trust": "untrusted",
+                        "value": "Hello",
+                    },
+                    {
+                        "label": "status",
+                        "field_class": "status_text",
+                        "trust": "trusted",
+                        "value": "stable",
+                    },
+                ],
+            }
+        }
+    )
+
+    assert gate.active_content == [
+        {
+            "label": "latest_message",
+            "field_class": "message_text",
+            "trust": "untrusted",
+            "value": "Hello",
+        },
+        {
+            "label": "status",
+            "field_class": "status_text",
+            "trust": "trusted",
+            "value": "stable",
+        },
+    ]
+
+
+def test_transcript_policy_supports_dedupe_and_limit() -> None:
+    gate = ContextGate(transcript_limit=2, dedupe_transcript=True)
+
+    gate.apply_update(
+        {
+            "transcript": {
+                "mode": "merge",
+                "items": [
+                    "Older residue",
+                    "Older residue",
+                    "Latest residue",
+                    "Newest residue",
+                ],
+            }
+        }
+    )
+
+    assert gate.active_transcript == ["Latest residue", "Newest residue"]
