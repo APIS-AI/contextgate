@@ -179,6 +179,24 @@ That example shows useful runtime facts an agent may actually need:
 - platform
 - current working directory
 
+## Trusted DESKTOP Example
+
+For a trusted local `HeaderForge` example built from files, see:
+- `examples/headerforge_desktop_from_files.py`
+
+That example reads a local directory, selects a small set of files, and renders a trusted local `DESKTOP` header outside the `ContextGate` wire protocol.
+
+## CLI Helper
+
+A small CLI is included to validate and normalize envelopes from a file or stdin:
+
+```bash
+contextgate envelope.json
+cat rendered_prompt.txt | contextgate
+```
+
+The CLI prints the normalized parsed envelope as JSON.
+
 ## HeaderForge
 
 `HeaderForge` is the local header construction layer.
@@ -195,17 +213,20 @@ contextgate/
   assembler.py
   schemas.py
   update_channel.py
+  cli.py
 
 demo/
   basic_flow.py
 
 examples/
   trusted_hud_from_os.py
+  headerforge_desktop_from_files.py
 
 tests/
   test_parser.py
   test_assembler.py
   test_update_channel.py
+  test_cli.py
 ```
 
 ## v0 Goals

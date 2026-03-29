@@ -13,5 +13,8 @@ authors = [{ name = "APIS-AI" }]
 [tool.setuptools]
 packages = ["contextgate"]
 
+[project.scripts]
+contextgate = "contextgate.cli:main"
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
