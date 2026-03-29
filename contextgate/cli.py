@@ -85,6 +85,15 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Print active state sizes to stderr after successful normalization or apply.",
     )
+    parser.add_argument(
+        "--write-state",
+        help="Optional path to write the resulting normalized envelope JSON.",
+    )
+    parser.add_argument(
+        "--compact-json",
+        action="store_true",
+        help="Print compact JSON instead of indented JSON when not using --render.",
+    )
     return parser
 
 
@@ -158,6 +167,10 @@ def emit_size_report(envelope: dict[str, Any]) -> None:
     )
 
 
+def write_state(path: str, envelope: dict[str, Any]) -> None:
+    Path(path).write_text(json.dumps(envelope, indent=2, sort_keys=True) + "\n")
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -192,10 +205,16 @@ def main(argv: list[str] | None = None) -> int:
     if args.report_sizes and isinstance(normalized, dict):
         emit_size_report(normalized)
 
+    if args.write_state and isinstance(normalized, dict):
+        write_state(args.write_state, normalized)
+
     if args.render:
         print(render_envelope_block(normalized, base_prompt=args.base_prompt))
     else:
-        print(json.dumps(normalized, indent=2, sort_keys=True))
+        if args.compact_json:
+            print(json.dumps(normalized, separators=(",", ":"), sort_keys=True))
+        else:
+            print(json.dumps(normalized, indent=2, sort_keys=True))
     return 0
 
 

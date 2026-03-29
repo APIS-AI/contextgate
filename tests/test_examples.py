@@ -90,3 +90,18 @@ def test_cli_apply_update_flow_example_runs() -> None:
     assert "<CONTEXTGATE_ENVELOPE>" in result.stdout
     assert '"participant_count":5' in result.stdout
     assert "contextgate: size" in result.stdout
+
+
+def test_cli_agent_loop_shell_example_runs() -> None:
+    result = subprocess.run(
+        ["bash", "examples/cli_agent_loop.sh"],
+        cwd=REPO_ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    assert "UPDATED STATE" in result.stdout
+    assert "RENDERED PROMPT" in result.stdout
+    assert '"participant_count":5' in result.stdout
+    assert "<CONTEXTGATE_ENVELOPE>" in result.stdout
