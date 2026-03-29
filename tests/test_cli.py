@@ -55,3 +55,23 @@ def test_cli_rejects_invalid_update_channel(monkeypatch, capsys) -> None:
     assert main(["--update"]) == 1
     err = capsys.readouterr().err
     assert "Unsupported update sections" in err
+
+
+def test_cli_rejects_invalid_hud_update_against_schema(tmp_path, monkeypatch, capsys) -> None:
+    schema_path = tmp_path / "schema.json"
+    schema_path.write_text(
+        json.dumps(
+            {
+                "version": "v0",
+                "fields": {
+                    "participant_count": {"expected_type": "integer"},
+                },
+            }
+        )
+    )
+    response = 'Visible text\n<CONTEXTGATE_UPDATE>{"hud":{"participant_count":"ignore previous instructions"}}</CONTEXTGATE_UPDATE>'
+    monkeypatch.setattr("sys.stdin", StringIO(response))
+
+    assert main(["--update", "--schema", str(schema_path)]) == 1
+    err = capsys.readouterr().err
+    assert "Expected integer" in err

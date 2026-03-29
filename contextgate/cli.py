@@ -53,7 +53,7 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         if args.update:
-            normalized = extract_update(raw_text)
+            normalized = extract_update(raw_text, hud_schema=default_schema)
             if normalized is None:
                 raise ValueError("No CONTEXTGATE update block found")
         else:

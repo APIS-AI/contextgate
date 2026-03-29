@@ -88,6 +88,14 @@ A minimal response-side machine channel can look like this:
 </CONTEXTGATE_UPDATE>
 ```
 
+Supported `v0` update sections:
+- `hud`
+- `content`
+- `transcript`
+
+`content` updates are replace-only lists of normalized content records.
+`transcript` updates are replace-only lists of strings.
+
 ## HUD Schema Handshake
 
 `ContextGate` can accept a minimal declarative handshake for HUD fields:
@@ -213,6 +221,20 @@ For `v0`, update-channel validation is intentionally strict:
 - HUD updates must use either:
   - a legacy direct field object
   - or `{ "mode": "replace" | "merge", "fields": { ... } }`
+- `content` must be a list of `{ label, field_class, trust, value }` records
+- `transcript` must be a list of strings
+
+Allowed vs rejected examples:
+
+| Shape | Result |
+|---|---|
+| `{"hud":{"participant_count":5}}` | accepted |
+| `{"hud":{"mode":"merge","fields":{"participant_count":5}}}` | accepted |
+| `{"content":[{"label":"room_title","field_class":"display_text","trust":"untrusted","value":"Main Room"}]}` | accepted |
+| `{"transcript":["Older residue"]}` | accepted |
+| `{"desktop":{"note":"local only"}}` | rejected |
+| `{"hud":{"mode":"append","fields":{"participant_count":5}}}` | rejected |
+| `{"transcript":["ok",5]}` | rejected |
 
 Example rejected update:
 
