@@ -1,19 +1,95 @@
 # ContextGate
 
-ContextGate is a prompt-context boundary for agent systems.
+ContextGate is a dynamic HUD-style context header for agents.
 
-It gives developers a small way to inject current structured state into prompts without treating transcript residue, tool output, and untrusted content as the same thing.
+It makes agents aware of trusted local state and untrusted remote data without inflating context, because the live header is replaced each turn instead of endlessly appended through transcript history.
 
 For the full protocol and design rationale, see [docs/CONTEXTGATE_PROTOCOL_PROPOSAL.md](docs/CONTEXTGATE_PROTOCOL_PROPOSAL.md).
 
-## What It Does
+## Before vs After
 
-- injects one current context envelope into each turn
-- keeps live state replaceable instead of append-only
-- separates trusted runtime state from untrusted content
-- validates incoming fields against declared types or schemas
-- supports a bounded machine update channel on response output
-- fits into an existing prompt assembly pipeline
+Before:
+
+```text
+SYSTEM: You are a helpful agent.
+CHAT HISTORY:
+- user: join room alpha
+- tool: fetched room metadata
+- tool: fetched participant list
+- assistant: I am now in room alpha
+- user: what is the room title?
+STATE NOTES:
+- active room is probably alpha
+- participant count might be 5
+- room title may be "Main Room"
+```
+
+After:
+
+```text
+SYSTEM: You are a helpful agent.
+<CONTEXTGATE_ENVELOPE>
+{"auth":{"source":"local_runtime","trust":"trusted"},"content":[{"field_class":"display_text","label":"room_title","trust":"untrusted","value":"Main Room"}],"ctx_version":"0.1","hud":{"fields":{"current_room_id":"room_alpha","participant_count":5},"mode":"replace"},"transcript":[]}
+</CONTEXTGATE_ENVELOPE>
+```
+
+The point is not to remove untrusted text. The point is to stop mixing current authoritative state, remote content, and transcript residue into one growing blob.
+
+## Quickstart
+
+```python
+import contextgate as cg
+
+gate = cg.ContextGate()
+
+prompt = gate.render(
+    base_prompt="Answer using the current runtime state.",
+    hud={"current_room_id": "room_alpha", "participant_count": 5},
+    content=[
+        {
+            "label": "room_title",
+            "field_class": "display_text",
+            "trust": "untrusted",
+            "value": "Main Room",
+        }
+    ],
+)
+
+response = """
+Summary: Room updated.
+<CONTEXTGATE_UPDATE>
+{"hud":{"mode":"merge","fields":{"participant_count":6}}}
+</CONTEXTGATE_UPDATE>
+"""
+
+update = gate.extract_update(response)
+state = gate.apply_update(update)
+visible_text = gate.visible_text(response)
+```
+
+## Why It Exists
+
+- transcript history is a poor container for live state
+- important context should be replaced, not endlessly re-appended
+- trusted local state and untrusted remote data should not be mixed together
+- agents need awareness of current state without prompt bloat
+
+## What ContextGate Gives You
+
+- a dynamic HUD-style context header at the top of the prompt
+- trusted local state from sources like desktop/runtime status and OS-derived facts
+- untrusted remote data in separate lanes instead of promoted into authoritative state
+- live replacement each turn instead of transcript accumulation
+- a strict machine update channel so the HUD can stay current across turns
+- typed validation for declared fields and schema-bound references
+
+## Use Cases
+
+- desktop agents that need current OS facts such as time, date, timezone, active app/window, or local runtime state
+- browser or research agents that need fetched remote content without treating it as trusted
+- long-running CLI agents that need compact live state between turns
+- multi-tool agents that need a stable working view at the top of each prompt
+- systems that need visible separation between authoritative local state, untrusted remote content, and optional transcript residue
 
 ## Core Concepts
 
@@ -22,7 +98,7 @@ For the full protocol and design rationale, see [docs/CONTEXTGATE_PROTOCOL_PROPO
 - `TRANSCRIPT`: optional historical residue
 - `DESKTOP`: a trusted local `HeaderForge` example, not a `ContextGate` wire-protocol section
 
-At steady state, only one active `ContextGate` envelope should be present in prompt-visible context. Older copies should be stripped before the next turn.
+At steady state, only one active `ContextGate` envelope should be present in prompt-visible context. Older copies should be stripped before the next turn and replaced with the current authoritative view.
 
 ## Integration Shape
 
@@ -631,4 +707,4 @@ tests/
 
 ## Status
 
-This repository is the private working repo for the protocol, reference API shape, and initial implementation work.
+This repository is an early prototype for the protocol, reference API shape, and initial implementation work. The API surface may change as the design is validated in real agent loops.
