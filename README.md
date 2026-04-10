@@ -4,6 +4,12 @@ ContextGate is a HUD-style dynamic context header for agents.
 
 It makes agents aware of trusted local state and untrusted remote data without inflating context, because the live header is replaced each turn instead of endlessly appended through transcript history.
 
+```text
+<CONTEXTGATE_HUD>
+{"auth":{"source":"local_runtime","trust":"trusted"},"content":[],"ctx_version":"0.1","hud":{"fields":{"context":"49804/1048576 (4%) [turn-start snapshot]","local_time":"2026-04-09T21:34:01-07:00","model":"google/gemini-3.1-pro-preview","session":"main","utc_time":"2026-04-10T04:34:01+00:00"},"mode":"replace"},"transcript":[]}
+</CONTEXTGATE_HUD>
+```
+
 That means a runtime can send richer live state without crowding out the actual user task. In practice, a trusted local header such as `DESKTOP` can carry desktop/runtime facts every turn while preserving far more prompt budget for coding or other working context than replaying those facts in chat history.
 
 For the full protocol and design rationale, see [docs/CONTEXTGATE_PROTOCOL_PROPOSAL.md](docs/CONTEXTGATE_PROTOCOL_PROPOSAL.md).
