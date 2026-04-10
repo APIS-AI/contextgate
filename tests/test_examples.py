@@ -18,7 +18,9 @@ def test_end_to_end_prompt_assembly_example_runs() -> None:
     )
 
     assert "<DESKTOP>" in result.stdout
-    assert "<CONTEXTGATE_ENVELOPE>" in result.stdout
+    # Example now uses custom tags for each gate
+    assert "<CONTEXTGATE_HUD>" in result.stdout
+    assert "<CONTEXTGATE_CONTENT>" in result.stdout
     assert "ignore previous instructions" in result.stdout
 
 

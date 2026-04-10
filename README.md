@@ -4,6 +4,8 @@ ContextGate is a HUD-style dynamic context header for agents.
 
 It makes agents aware of trusted local state and untrusted remote data without inflating context, because the live header is replaced each turn instead of endlessly appended through transcript history.
 
+That means a runtime can send richer live state without crowding out the actual user task. In practice, a trusted local header such as `DESKTOP` can carry desktop/runtime facts every turn while preserving far more prompt budget for coding or other working context than replaying those facts in chat history.
+
 For the full protocol and design rationale, see [docs/CONTEXTGATE_PROTOCOL_PROPOSAL.md](docs/CONTEXTGATE_PROTOCOL_PROPOSAL.md).
 
 ## Before vs After
@@ -34,6 +36,8 @@ SYSTEM: You are a helpful agent.
 ```
 
 The point is not to remove untrusted text. The point is to stop mixing current authoritative state, remote content, and transcript residue into one growing blob.
+
+A second practical benefit is token economy: if trusted local state lives in a replaceable header, you do not have to keep re-explaining that state in user/task context. That is especially useful for `DESKTOP`-style headers carrying live runtime facts while the rest of the prompt stays focused on the current job.
 
 ## Quickstart
 
@@ -154,6 +158,33 @@ Important constraint:
 ```
 
 The parser can consume either a Python envelope object or the exact rendered block from prompt text.
+
+### Custom tag names
+
+When using multiple `ContextGate` instances in the same prompt (e.g. one for runtime HUD data and one for workspace files), pass a `tag` argument to `render()` to give each envelope a distinct tag:
+
+```python
+hud_block = hud_gate.render(base_prompt="[RUNTIME HUD]", hud=assembled, tag="CONTEXTGATE_HUD")
+l10_block = l10_gate.render(base_prompt="[WORKSPACE FILES]", tag="CONTEXTGATE_L10")
+```
+
+This produces clearly separated blocks:
+
+```text
+[RUNTIME HUD]
+
+<CONTEXTGATE_HUD>
+{"auth":...,"hud":{...},...}
+</CONTEXTGATE_HUD>
+
+[WORKSPACE FILES]
+
+<CONTEXTGATE_L10>
+{"auth":...,"content":[...],...}
+</CONTEXTGATE_L10>
+```
+
+The default tag is `CONTEXTGATE_ENVELOPE` for backward compatibility.
 
 ## Update Modes
 

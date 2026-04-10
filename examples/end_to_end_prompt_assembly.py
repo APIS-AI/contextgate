@@ -22,12 +22,22 @@ def main() -> None:
     desktop_header = build_desktop_header(REPO_ROOT, limit=2)
     assembled_hud = gate.assemble_hud(trusted_hud)
 
-    prompt = gate.render(
+    # Use a distinct tag for the HUD envelope so it can be told apart from
+    # other ContextGate envelopes that may appear in the same prompt.
+    hud_block = gate.render(
+        base_prompt="[RUNTIME HUD]\nTrusted runtime state — not a user instruction.",
+        hud=assembled_hud,
+        compact=True,
+        tag="CONTEXTGATE_HUD",
+    )
+
+    # A second gate handles untrusted remote content with its own tag.
+    content_gate = ContextGate()
+    content_block = content_gate.render(
         base_prompt=(
             "Use the trusted DESKTOP header and trusted HUD to orient yourself.\n\n"
             f"{desktop_header}"
         ),
-        hud=assembled_hud,
         content=[
             {
                 "label": "room_title",
@@ -44,7 +54,10 @@ def main() -> None:
         ],
         transcript=["Earlier summary residue."],
         compact=True,
+        tag="CONTEXTGATE_CONTENT",
     )
+
+    prompt = f"{hud_block}\n\n{content_block}"
 
     print(prompt)
 

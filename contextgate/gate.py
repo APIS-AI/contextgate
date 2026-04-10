@@ -134,6 +134,7 @@ class ContextGate:
         transcript: list[str] | None = None,
         auth: dict[str, Any] | None = None,
         compact: bool = False,
+        tag: str = "CONTEXTGATE_ENVELOPE",
     ) -> str:
         envelope = self.build_envelope(
             hud=hud,
@@ -150,9 +151,9 @@ class ContextGate:
             [
                 base_prompt.rstrip(),
                 "",
-                "<CONTEXTGATE_ENVELOPE>",
+                f"<{tag}>",
                 payload,
-                "</CONTEXTGATE_ENVELOPE>",
+                f"</{tag}>",
             ]
         )
 
